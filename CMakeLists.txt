@@ -61,6 +61,8 @@ find_package(PythonLibs ${FIND_PYTHON_INTERP_VERSION} MODULE REQUIRED)
 
 find_package(drake CONFIG REQUIRED)
 
+find_package(cppzmq REQUIRED)
+
 get_filename_component(PYTHONPATH
   "${drake_DIR}/../../python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages"
   REALPATH
