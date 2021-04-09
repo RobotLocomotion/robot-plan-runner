@@ -34,7 +34,7 @@ add_subdirectory(find_resource)
 add_subdirectory(particles)
 add_subdirectory(simple_bindings)
 add_subdirectory(simple_continuous_time_system)
-add_subdirectory(traj_opt)
+add_subdirectory(plan_runner)
 
 
 add_test(NAME import_all_test COMMAND
