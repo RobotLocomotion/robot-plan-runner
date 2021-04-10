@@ -1,6 +1,6 @@
 #! /bin/bash
-set -euxo pipefail
 export PYTHONPATH=/opt/drake/lib/python3.6/site-packages:$PYTHONPATH
+set -euxo pipefail
 
 mkdir ./build
 pushd build

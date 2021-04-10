@@ -17,4 +17,4 @@ jobs:
         run: sudo bash ./scripts/install_dependencies.sh
         shell: bash
       - name: build_and_test
-        run: sudo bash ./scripts/build_and_run_tests.sh
+        run: sudo bash ./scripts/build_test.sh
