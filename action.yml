@@ -1,0 +1,8 @@
+# action.yml
+name: 'run test'
+description: 'runs tests.'
+
+runs:
+  using: 'docker'
+  image: 'bionic.dockerfile'
+  entrypoint: './scripts/build_test.sh'

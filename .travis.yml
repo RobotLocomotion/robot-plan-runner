@@ -1,9 +1,0 @@
-dist: bionic
-services:
-  - docker
-
-install:
-  - docker build -t plan_runner -f bionic.dockerfile .
-
-script:
-  - docker run -it -v $PWD:/robot-plan-runner --entrypoint /robot-plan-runner/scripts/build_and_run_tests.sh plan_runner

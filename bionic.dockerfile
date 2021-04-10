@@ -1,16 +1,15 @@
 FROM ubuntu:18.04
 
 # Install curl and useful transport
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && yes "Y" \
       | apt-get install --no-install-recommends curl apt-transport-https sudo \
-      ca-certificates libzmq3-dev libzmq3-dev cmake-curses-gui git-all \
-      libgtest-dev libgflags-dev \
+      ca-certificates libzmq3-dev libzmq3-dev libgtest-dev libgflags-dev \
       && rm -rf /var/lib/apt/lists/* \
       && apt-get clean all
 
 # install drake.
-ENV DRAKE_URL https://drake-packages.csail.mit.edu/drake/nightly/drake-latest-bionic.tar.gz
+ENV DRAKE_URL=https://drake-packages.csail.mit.edu/drake/nightly/drake-latest-bionic.tar.gz
 RUN curl -o drake.tar.gz $DRAKE_URL
 RUN tar -xzf drake.tar.gz -C /opt && rm drake.tar.gz
 RUN apt-get update \
@@ -18,8 +17,8 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/* \
   && apt-get clean all
 
-# install cppzmq
-COPY scripts/install_dependencies.sh /install_dependencies.sh
+## install cppzmq
+COPY scripts/install_cppzmq.sh /install_dependencies.sh
 RUN /bin/bash /install_dependencies.sh
 
 # put drake on the python path.
