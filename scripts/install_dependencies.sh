@@ -11,7 +11,8 @@ trap 'rm -rf /opt/drake-latest-bionic.tar.gz /var/cache/apt/archives/*.deb /var/
 tar -xf drake-latest-bionic.tar.gz
 popd
 
-apt-get install -o APT::Acquire::Retries=4 -o Dpkg::Use-Pty=0 -qy --no-install-recommends $(cat /opt/drake/share/drake/setup/packages-bionic.txt)
+#apt-get install -o APT::Acquire::Retries=4 -o Dpkg::Use-Pty=0 -qy --no-install-recommends $(cat /opt/drake/share/drake/setup/packages-bionic.txt)
+yes "Y" | bash /opt/drake/share/drake/setup/install_prereqs
 
 # install cppzmq
 curl -o cppzmq.tar.gz -L https://github.com/zeromq/cppzmq/archive/refs/tags/v4.7.1.tar.gz
