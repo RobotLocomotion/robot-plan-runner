@@ -1,3 +1,7 @@
+# Robot Plan Runner
+![example workflow](https://github.com/robotlocomotion/robot-plan-runner/actions/workflows/ci.yml/badge.svg)
+
+---
 # CMake Project with an Installed Drake
 
 This uses the CMake `find_package(drake)` mechanism to find an installed instance of Drake.
