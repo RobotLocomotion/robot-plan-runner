@@ -1,5 +1,5 @@
 # Robot Plan Runner
-![example workflow](https://github.com/robotlocomotion/robot-plan-runner/actions/workflows/ci.yml/badge.svg)
+![ci_badge](https://github.com/robotlocomotion/robot-plan-runner/actions/workflows/ci.yml/badge.svg)
 
 ---
 # CMake Project with an Installed Drake
