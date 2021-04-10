@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
+set -euxo pipefail
 
-#git clone https://github.com/RobotLocomotion/robot-plan-runner.git
 # build
 mkdir /robot-plan-runner-build && cd /robot-plan-runner-build
 cmake -DCMAKE_PREFIX_PATH=/opt/drake /robot-plan-runner
