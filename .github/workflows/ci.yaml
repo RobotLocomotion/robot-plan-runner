@@ -16,5 +16,9 @@ jobs:
       - name: setup
         run: sudo bash ./scripts/install_dependencies.sh
         shell: bash
+      - name: drake_prereqs
+        run: yes "Y" | sudo bash /opt/drake/share/drake/setup/install_prereqs
+        shell: bash
       - name: build_and_test
         run: sudo bash ./scripts/build_test.sh
+        shell: bash
