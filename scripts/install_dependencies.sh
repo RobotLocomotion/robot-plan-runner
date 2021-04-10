@@ -16,7 +16,7 @@ apt-get install -o APT::Acquire::Retries=4 -o Dpkg::Use-Pty=0 -qy --no-install-r
 # install cppzmq
 pushd /opt
 curl -o cppzmq.tar.gz -L https://github.com/zeromq/cppzmq/archive/refs/tags/v4.7.1.tar.gz
-tar -xzf cppzmq.tar.gz -C
+tar -xzf cppzmq.tar.gz
 popd
 cd /opt/cppzmq-4.7.1 && mkdir build && cd build
 cmake -DCPPZMQ_BUILD_TESTS=OFF ..
