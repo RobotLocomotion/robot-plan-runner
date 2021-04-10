@@ -1,5 +1,4 @@
 #! /bin/bash
-
 set -euxo pipefail
 export PYTHONPATH=/opt/drake/lib/python3.6/site-packages:$PYTHONPATH
 
