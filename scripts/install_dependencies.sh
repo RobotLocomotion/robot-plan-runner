@@ -2,7 +2,7 @@
 set -euxo pipefail
 export APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1 DEBIAN_FRONTEND=noninteractive
 
-apt-get install -o APT::Acquire::Retries=4 -o Dpkg::Use-Pty=0 -qy --no-install-recommends xvfb ca-certificates libzmq3-dev libgtest-dev libgflags-dev
+apt-get install -o APT::Acquire::Retries=4 -o Dpkg::Use-Pty=0 -qy --no-install-recommends xvfb ca-certificates libzmq3-dev libgtest-dev libgflags-dev libpgm-dev
 trap 'rm -rf /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin /var/lib/apt/lists/* /var/log/apt/*' EXIT
 
 pushd /opt
