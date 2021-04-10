@@ -31,7 +31,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 cmake_minimum_required(VERSION 3.10.2)
-project(contact_trajectory_optimization)
+project(robot_plan_runner)
 
 # N.B. This is a temporary flag. It only really applies to Linux, as Mac
 # does not need X11.
