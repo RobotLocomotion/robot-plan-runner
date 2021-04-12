@@ -52,21 +52,24 @@ void IiwaPlanManager::HandleIiwaStatus(
           Eigen::Map<VectorXd>(iiwa_status_msg_.joint_torque_external.data(),
                                iiwa_status_msg_.num_joints));
   Command c;
-  const PlanBase* plan =  state_machine_->get_current_plan();
+  const PlanBase* plan = state_machine_->GetCurrentPlan();
   if (plan) {
-    plan ->Step(s, control_period_, state_machine_->get_plan_time(), &c);
+    plan ->Step(s, control_period_,
+                state_machine_->get_current_plan_up_time(), &c);
   } else {
     //TODO: no command is sent if there is no plan. Make sure that this is
     // the desired behavior.
     return;
   }
 
-  drake::lcmt_iiwa_command cmd_msg;
-  cmd_msg.num_joints = status_msg->num_joints;
-  cmd_msg.utime = status_msg->utime;
-  for (int i = 0; i < cmd_msg.num_joints; i++) {
-    cmd_msg.joint_position.push_back(c.q_cmd[i]);
-    cmd_msg.joint_torque.push_back(c.tau_cmd[i]);
+  if (!state_machine_->CommandHasError(s, c)) {
+    drake::lcmt_iiwa_command cmd_msg;
+    cmd_msg.num_joints = status_msg->num_joints;
+    cmd_msg.utime = status_msg->utime;
+    for (int i = 0; i < cmd_msg.num_joints; i++) {
+      cmd_msg.joint_position.push_back(c.q_cmd[i]);
+      cmd_msg.joint_torque.push_back(c.tau_cmd[i]);
+    }
+    lcm_status_command_->publish("IIWA_COMMAND", &cmd_msg);
   }
-  lcm_status_command_->publish("IIWA_COMMAND", &cmd_msg);
 }

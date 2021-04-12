@@ -1,6 +1,9 @@
 #include "state_idle.h"
 #include "state_running.h"
 
+using std::cout;
+using std::endl;
+
 PlanManagerStateBase* StateIdle::instance_ = nullptr;
 PlanManagerStateBase* StateIdle::Instance() {
   if (!instance_) {
@@ -9,10 +12,9 @@ PlanManagerStateBase* StateIdle::Instance() {
   return instance_;
 }
 
-const PlanBase * StateIdle::get_current_plan(const PlanManagerStateMachine*
-state_machine) const {
-  const auto& plans_queue = state_machine->get_plans_queue();
-  DRAKE_THROW_UNLESS(plans_queue.empty());
+const PlanBase * StateIdle::GetCurrentPlan(PlanManagerStateMachine
+                                             *state_machine) const {
+  DRAKE_THROW_UNLESS(state_machine->num_plans() == 0);
   return nullptr;
 }
 
@@ -22,3 +24,11 @@ void StateIdle::QueueNewPlan(PlanManagerStateMachine *state_machine,
   plan_queue.push(plan);
   ChangeState(state_machine, StateRunning::Instance());
 }
+
+void StateIdle::PrintCurrentState(
+    const PlanManagerStateMachine *state_machine) const {
+  cout << "[IDLE]: waiting for new plans. "
+       << "Number of plans: " << state_machine->num_plans() << "." << endl;
+}
+
+

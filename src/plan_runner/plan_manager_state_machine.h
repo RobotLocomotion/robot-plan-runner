@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 #include <memory>
 #include <queue>
 
@@ -13,24 +14,34 @@ class PlanManagerStateMachine {
 public:
   PlanManagerStateMachine();
   // State-dependent methods.
-  inline const PlanBase *get_current_plan() const;
-  inline bool has_received_status_msg() const;
+  [[nodiscard]] inline const PlanBase *GetCurrentPlan();
+  [[nodiscard]] inline bool has_received_status_msg() const;
   inline void receive_new_status_msg();
-  inline PlanExecutionStatus get_plan_execution_status() const;
-  inline double get_plan_time() const;
-  void PrintCurrentState() const;
+  [[nodiscard]] inline PlanExecutionStatus get_plan_execution_status() const;
+  [[nodiscard]] inline double get_current_plan_up_time() const;
+  inline void PrintCurrentState() const;
   void QueueNewPlan(std::shared_ptr<PlanBase> plan);
-  bool CheckCommandForError(const Command &cmd, const State &state) const;
+  bool CommandHasError(const State &state, const Command &cmd);
 
   // Other methods.
-  size_t num_plans() const { return plans_.size(); }
+  [[nodiscard]] size_t num_plans() const { return plans_.size(); }
   std::queue<std::shared_ptr<PlanBase>> &get_mutable_plans_queue() {
     return plans_;
   };
-  // TODO: replace shared_ptr with unique_ptr.
-  const std::queue<std::shared_ptr<PlanBase>> &get_plans_queue() const {
+  // TODO: replace shared_ptr with unique_ptr (or something else?).
+  [[nodiscard]] const std::queue<std::shared_ptr<PlanBase>> &
+  get_plans_queue() const {
     return plans_;
-  }
+  };
+
+  // TODO: "time" methods should probably be private. Access by states can be
+  //  enabled by forwarding in PlanManagerStateBase.
+  void set_current_plan_start_time(
+      const std::chrono::time_point<std::chrono::high_resolution_clock> &t);
+  void reset_current_plan_start_time() { current_plan_start_time_.reset(); };
+  [[nodiscard]] double get_current_plan_up_time(
+      const std::chrono::time_point<std::chrono::high_resolution_clock> &t_now)
+      const;
 
 private:
   friend class PlanManagerStateBase;
@@ -38,33 +49,49 @@ private:
   std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant_;
   PlanManagerStateBase *state_{nullptr};
   std::queue<std::shared_ptr<PlanBase>> plans_;
+  std::unique_ptr<std::chrono::time_point<std::chrono::high_resolution_clock>>
+      current_plan_start_time_{nullptr};
 };
 
 class PlanManagerStateBase {
 public:
-  virtual const PlanBase *
-  get_current_plan(const PlanManagerStateMachine *state_machine) const = 0;
-  virtual double get_plan_time() const = 0;
-  virtual bool has_received_status_msg() const = 0;
+  // Virtual functions.
+  [[nodiscard]] virtual double get_current_plan_up_time(
+      const PlanManagerStateMachine *state_machine) const;
+  [[nodiscard]] virtual bool has_received_status_msg() const;
   virtual void
-  receive_new_status_msg(PlanManagerStateMachine *state_machine) const = 0;
-  virtual PlanExecutionStatus get_plan_execution_status() const = 0;
+  receive_new_status_msg(PlanManagerStateMachine *state_machine) const;
   virtual void QueueNewPlan(PlanManagerStateMachine *state_machine,
-                            std::shared_ptr<PlanBase> plan) = 0;
+                            std::shared_ptr<PlanBase> plan);
+  virtual bool CommandHasError(const State &state, const Command &cmd,
+                               PlanManagerStateMachine *state_machine);
+  // Pure virtual functions.
+  [[nodiscard]] virtual PlanExecutionStatus
+  get_plan_execution_status() const = 0;
   virtual void
   PrintCurrentState(const PlanManagerStateMachine *state_machine) const = 0;
-  virtual bool CheckCommandForError(const Command &cmd,
-                                    const State &state) const = 0;
+  virtual const PlanBase *
+  GetCurrentPlan(PlanManagerStateMachine *state_machine) const = 0;
+
+  // Other functions.
+  [[nodiscard]] const std::string &get_state_name() const {
+    return state_name_;
+  };
 
 protected:
+  PlanManagerStateBase(const std::string &state_name)
+      : state_name_(state_name){};
   static void ChangeState(PlanManagerStateMachine *state_machine,
                           PlanManagerStateBase *new_state) {
     state_machine->ChangeState(new_state);
   };
+
+private:
+  const std::string state_name_;
 };
 
-inline const PlanBase *PlanManagerStateMachine::get_current_plan() const {
-  return state_->get_current_plan(this);
+inline const PlanBase *PlanManagerStateMachine::GetCurrentPlan() {
+  return state_->GetCurrentPlan(this);
 }
 
 inline bool PlanManagerStateMachine::has_received_status_msg() const {
@@ -80,8 +107,8 @@ PlanManagerStateMachine::get_plan_execution_status() const {
   return state_->get_plan_execution_status();
 }
 
-inline double PlanManagerStateMachine::get_plan_time() const {
-  return state_->get_plan_time();
+inline double PlanManagerStateMachine::get_current_plan_up_time() const {
+  return state_->get_current_plan_up_time(this);
 }
 
 inline void
@@ -94,7 +121,11 @@ PlanManagerStateMachine::ChangeState(PlanManagerStateBase *new_state) {
   state_ = new_state;
 }
 
-bool PlanManagerStateMachine::CheckCommandForError(const Command &cmd,
-                                                   const State &state) const {
-  state_->CheckCommandForError(cmd, state);
+bool PlanManagerStateMachine::CommandHasError(const State &state,
+                                              const Command &cmd) {
+ return state_->CommandHasError(state, cmd, this);
 }
+
+inline void PlanManagerStateMachine::PrintCurrentState() const {
+  state_->PrintCurrentState(this);
+};
