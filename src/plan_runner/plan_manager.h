@@ -17,7 +17,7 @@ class IiwaPlanManager {
  private:
   const double control_period_;
   std::mutex mutex_state_machine_;
-  std::unique_ptr<PlanManagerStateMachine> pmsm_;
+  std::unique_ptr<PlanManagerStateMachine> state_machine_;
   std::unordered_map<std::string, std::thread> threads_;
 
   // Iiwa status + command thread.

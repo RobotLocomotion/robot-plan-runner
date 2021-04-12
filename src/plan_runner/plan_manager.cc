@@ -7,7 +7,7 @@ using Eigen::VectorXd;
 
 IiwaPlanManager::IiwaPlanManager(double control_period)
     : control_period_(control_period) {
-  pmsm_ = std::make_unique<PlanManagerStateMachine>();
+  state_machine_ = std::make_unique<PlanManagerStateMachine>();
 }
 
 IiwaPlanManager::~IiwaPlanManager() {
@@ -25,7 +25,7 @@ void IiwaPlanManager::CalcCommandFromStatus() {
                                  this);
   // Call lcm handle until at least one status message is processed.
   while (0 == lcm_status_command_->handleTimeout(10) ||
-         !pmsm_->has_received_status_msg()) {}
+         !state_machine_->has_received_status_msg()) {}
 
 }
 
@@ -43,7 +43,7 @@ void IiwaPlanManager::HandleIiwaStatus(
   }
   {
     std::lock_guard<std::mutex> lock(mutex_state_machine_);
-
+    state_machine_->receive_new_status_msg();
   }
   State s(Eigen::Map<VectorXd>(iiwa_status_msg_.joint_position_measured.data(),
                                iiwa_status_msg_.num_joints),
@@ -52,9 +52,9 @@ void IiwaPlanManager::HandleIiwaStatus(
           Eigen::Map<VectorXd>(iiwa_status_msg_.joint_torque_external.data(),
                                iiwa_status_msg_.num_joints));
   Command c;
-  const PlanBase* plan =  pmsm_->get_current_plan();
+  const PlanBase* plan =  state_machine_->get_current_plan();
   if (plan) {
-    plan ->Step(s, control_period_, pmsm_->get_plan_time(), &c);
+    plan ->Step(s, control_period_, state_machine_->get_plan_time(), &c);
   } else {
     //TODO: no command is sent if there is no plan. Make sure that this is
     // the desired behavior.
