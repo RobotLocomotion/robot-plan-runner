@@ -19,7 +19,7 @@ const {
 }
 
 void StateError::QueueNewPlan(PlanManagerStateMachine *state_machine,
-                              std::shared_ptr<PlanBase> plan) {
+                              std::unique_ptr<PlanBase> plan) {
   cout << "[ERROR]: received plan is discarded."
        << "Number of plans: "  << state_machine->num_plans() << "."
        << endl;

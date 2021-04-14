@@ -13,22 +13,22 @@ PlanManagerStateBase* StateRunning::Instance() {
   return instance_;
 }
 
-const PlanBase * StateRunning::GetCurrentPlan(
-    PlanManagerStateMachine *state_machine) const {
+const PlanBase * StateRunning::GetCurrentPlan(PlanManagerStateMachine *state_machine,
+                                              const TimePoint &t_now) const {
   auto& plans = state_machine->get_mutable_plans_queue();
   DRAKE_THROW_UNLESS(!plans.empty());
-
-  auto t_now = std::chrono::high_resolution_clock::now();
-  const double t_elapsed_seconds =
-      state_machine->get_current_plan_up_time(t_now);
-  if (t_elapsed_seconds < 0) {
+  const TimePoint *t_start = state_machine->get_current_plan_start_time();
+  if (t_start == nullptr) {
     // current_plan_start_time_ is nullptr, meaning that there is no active
     // plan.
     state_machine->set_current_plan_start_time(t_now);
-  } else if (t_elapsed_seconds > plans.front()->duration() + 1.0) {
-    // current plan has expired, switching to the next plan.
-    state_machine->set_current_plan_start_time(t_now);
-    plans.pop();
+  } else {
+    const double t_elapsed_seconds = state_machine->GetCurrentPlanUpTime(t_now);
+    if (t_elapsed_seconds > plans.front()->duration() + 1.0) {
+      // current plan has expired, switching to the next plan.
+      state_machine->set_current_plan_start_time(t_now);
+      plans.pop();
+    }
   }
   if (plans.empty()) {
     state_machine->reset_current_plan_start_time();
@@ -38,10 +38,13 @@ const PlanBase * StateRunning::GetCurrentPlan(
   return plans.front().get();
 }
 
-double StateRunning::get_current_plan_up_time(
-    const PlanManagerStateMachine *state_machine) const {
-  auto t_now = std::chrono::high_resolution_clock::now();
-  return state_machine->get_current_plan_up_time(t_now);
+double StateRunning::GetCurrentPlanUpTime(const PlanManagerStateMachine *state_machine,
+                                          const TimePoint &t_now) const {
+  const TimePoint *t_start = state_machine->get_current_plan_start_time();
+  DRAKE_THROW_UNLESS(t_start != nullptr);
+  std::chrono::duration<double> t_elapsed_duration =
+      t_now - *t_start;
+  return t_elapsed_duration.count();
 }
 
 PlanExecutionStatus StateRunning::get_plan_execution_status() const {
@@ -49,7 +52,7 @@ PlanExecutionStatus StateRunning::get_plan_execution_status() const {
 }
 
 void StateRunning::QueueNewPlan(PlanManagerStateMachine *state_machine,
-                                std::shared_ptr<PlanBase> plan) {
+                                std::unique_ptr<PlanBase> plan) {
   //TODO: what is the desired behavior when receiving a new plan while a plan
   // is still being executed? Discard or queue?
   // Discard is probably the better option? The client should be blocked
@@ -70,7 +73,9 @@ bool StateRunning::CommandHasError(const State &state,
   bool is_too_far_away = (state.q - cmd.q_cmd).norm() > 0.05;
 
   bool is_error = is_nan or is_too_far_away;
-  ChangeState(state_machine, StateError::Instance());
+  if (is_error) {
+    ChangeState(state_machine, StateError::Instance());
+  }
   return is_error;
 }
 

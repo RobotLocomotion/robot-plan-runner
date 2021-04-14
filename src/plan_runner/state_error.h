@@ -4,18 +4,22 @@
 class StateError : public PlanManagerStateBase {
 public:
   static PlanManagerStateBase *Instance();
-  const PlanBase *GetCurrentPlan(
-      PlanManagerStateMachine *state_machine) const override {
+  const PlanBase *GetCurrentPlan(PlanManagerStateMachine *state_machine,
+                                 const TimePoint &t_now) const override {
     return nullptr;
   };
   void QueueNewPlan(PlanManagerStateMachine *state_machine,
-                    std::shared_ptr<PlanBase> plan) override;
+                    std::unique_ptr<PlanBase> plan) override;
   void PrintCurrentState(
       const PlanManagerStateMachine *state_machine) const override;
   [[nodiscard]] PlanExecutionStatus get_plan_execution_status() const override {
     return PlanExecutionStatus::kError;
   };
-
+  [[nodiscard]] PlanManagerStateTypes get_state_type() const override {
+    return PlanManagerStateTypes::kStateError;
+  };
+  void receive_new_status_msg(
+      PlanManagerStateMachine *state_machine) const override{};
 private:
   StateError() : PlanManagerStateBase("ERROR"){};
   static PlanManagerStateBase *instance_;

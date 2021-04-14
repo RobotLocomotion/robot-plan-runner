@@ -1,11 +1,10 @@
-#include <zmq.hpp>
 #include "drake_lcmtypes/drake/lcmt_iiwa_command.hpp"
 #include "drake_lcmtypes/drake/lcmt_robot_plan.hpp"
 #include "drake_lcmtypes/drake/lcmt_robot_state.hpp"
+#include <zmq.hpp>
 
 #include "iiwa_plan_manager.h"
 #include "plans/plan_base.h"
-
 
 using Eigen::VectorXd;
 using std::cout;
@@ -60,12 +59,51 @@ void IiwaPlanManager::ReceivePlans() {
   zmq::socket_t socket(ctx, ZMQ_REP);
   socket.bind("tcp://*:5555");
 
-  while(true) {
+  while (true) {
     zmq::message_t plan_msg;
-    socket.recv(plan_msg, zmq::recv_flags::none);
+    auto res = socket.recv(plan_msg, zmq::recv_flags::none);
 
+    if (!res.has_value()) {
+      throw std::runtime_error("Receiving plan message failed.");
+    }
 
+    drake::lcmt_robot_plan plan_lcm_msg;
+    plan_lcm_msg.decode(plan_msg.data(), 0, plan_msg.size());
+    auto plan = plan_factory_.MakePlan(plan_lcm_msg);
 
+    {
+      std::lock_guard<std::mutex> lock(mutex_state_machine_);
+      state_machine_->QueueNewPlan(std::move(plan));
+    }
+
+    std::string reply_msg;
+    while (true) {
+      using namespace std::chrono_literals;
+      std::this_thread::sleep_for(0.1s);
+
+      if (state_machine_->get_state_type() ==
+          PlanManagerStateTypes::kStateRunning) {
+        continue;
+      }
+      if (state_machine_->get_state_type() ==
+          PlanManagerStateTypes::kStateIdle) {
+        reply_msg = "success";
+        break;
+      }
+      if (state_machine_->get_state_type() ==
+          PlanManagerStateTypes::kStateError) {
+        reply_msg = "error";
+        break;
+      }
+      if (state_machine_->get_state_type() ==
+          PlanManagerStateTypes::kStateInit) {
+        reply_msg = "discarded";
+        break;
+      }
+    }
+    zmq::message_t reply(reply_msg.size());
+    memcpy(reply.data(), reply_msg.data(), reply_msg.size());
+    socket.send(reply, zmq::send_flags::none);
   }
 }
 
@@ -77,26 +115,27 @@ void IiwaPlanManager::HandleIiwaStatus(
     iiwa_status_msg_ = *status_msg;
   }
   const PlanBase *plan;
+  auto t_now = std::chrono::high_resolution_clock::now();
   {
     std::lock_guard<std::mutex> lock(mutex_state_machine_);
     state_machine_->receive_new_status_msg();
-    plan = state_machine_->GetCurrentPlan();
+    plan = state_machine_->GetCurrentPlan(t_now);
   }
 
   // Compute command.
   State s(Eigen::Map<VectorXd>(iiwa_status_msg_.joint_position_measured.data(),
                                iiwa_status_msg_.num_joints),
-          Eigen::Map<VectorXd>(iiwa_status_msg_.joint_position_measured.data(),
+          Eigen::Map<VectorXd>(iiwa_status_msg_.joint_velocity_estimated.data(),
                                iiwa_status_msg_.num_joints),
           Eigen::Map<VectorXd>(iiwa_status_msg_.joint_torque_external.data(),
                                iiwa_status_msg_.num_joints));
   Command c;
   if (plan) {
-    plan->Step(s, control_period_, state_machine_->get_current_plan_up_time(),
+    plan->Step(s, control_period_, state_machine_->GetCurrentPlanUpTime(t_now),
                &c);
   } else {
     // TODO: no command is sent if there is no plan. Make sure that this is
-    // the desired behavior.
+    //  the desired behavior.
     return;
   }
 
@@ -109,6 +148,7 @@ void IiwaPlanManager::HandleIiwaStatus(
   if (!command_has_error) {
     drake::lcmt_iiwa_command cmd_msg;
     cmd_msg.num_joints = status_msg->num_joints;
+    cmd_msg.num_torques = status_msg->num_joints;
     cmd_msg.utime = status_msg->utime;
     for (int i = 0; i < cmd_msg.num_joints; i++) {
       cmd_msg.joint_position.push_back(c.q_cmd[i]);

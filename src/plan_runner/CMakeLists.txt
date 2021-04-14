@@ -11,7 +11,7 @@ target_link_libraries(plan_manager_state_machine robot_plans)
 
 add_library(iiwa_plan_manager iiwa_plan_manager.h iiwa_plan_manager.cc)
 target_link_libraries(iiwa_plan_manager
-        plan_manager_state_machine cppzmq Threads::Threads)
+        plan_manager_state_machine cppzmq iiwa_plan_factory Threads::Threads)
 
 add_executable(run_zmq_example run_zmq_example.cc)
 target_link_libraries(run_zmq_example cppzmq iiwa_plan_factory)

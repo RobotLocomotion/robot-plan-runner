@@ -6,6 +6,9 @@
 
 #include "plan_base.h"
 
+
+// TODO: to support other robots, make PlanFactory an abstract class and
+//  inherit IiwaPlanFactory from it.
 class IiwaPlanFactory {
 public:
   std::unique_ptr<PlanBase>

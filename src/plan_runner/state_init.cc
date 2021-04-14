@@ -12,8 +12,8 @@ PlanManagerStateBase *StateInit::Instance() {
   return instance_;
 }
 
-const PlanBase *StateInit::GetCurrentPlan(
-    PlanManagerStateMachine *state_machine) const {
+const PlanBase *StateInit::GetCurrentPlan(PlanManagerStateMachine *state_machine,
+                                          const TimePoint &t_now) const {
   DRAKE_THROW_UNLESS(state_machine->num_plans() == 0);
   return nullptr;
 }
@@ -24,7 +24,7 @@ void StateInit::receive_new_status_msg(
 }
 
 void StateInit::QueueNewPlan(PlanManagerStateMachine *state_machine,
-                             std::shared_ptr<PlanBase> plan) {
+                             std::unique_ptr<PlanBase> plan) {
   std::cout << "[INIT]: no robot status message received yet. "
                "Received plan is discarded."
             << std::endl;

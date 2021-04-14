@@ -8,22 +8,30 @@ PlanManagerStateMachine::PlanManagerStateMachine() {
   state_ = StateInit::Instance();
 }
 
-double PlanManagerStateMachine::get_current_plan_up_time(
-    const std::chrono::time_point<std::chrono::high_resolution_clock>& t_now
-    ) const {
-  if (current_plan_start_time_ == nullptr) {
-    return -1;
-  }
-
-  std::chrono::duration<double> t_elapsed_duration =
-      t_now - *current_plan_start_time_;
-  return t_elapsed_duration.count();
+double
+PlanManagerStateMachine::GetCurrentPlanUpTime(const TimePoint &t_now) const {
+  return state_->GetCurrentPlanUpTime(this, t_now);
 }
 
-void PlanManagerStateMachine::set_current_plan_start_time(
-    const std::chrono::time_point<std::chrono::high_resolution_clock>& t) {
-  current_plan_start_time_ = std::make_unique<
-      std::chrono::time_point<std::chrono::high_resolution_clock>>(t);
+const PlanBase *PlanManagerStateMachine::GetCurrentPlan(const TimePoint &t_now) {
+  return state_->GetCurrentPlan(this, t_now);
+}
+
+double PlanManagerStateBase::GetCurrentPlanUpTime(
+    const PlanManagerStateMachine *state_machine,
+    const TimePoint &t_now) const {
+  string error_msg = "GetCurrentPlanUpTime should not be called in state ";
+  error_msg += get_state_name();
+  error_msg += ".";
+  throw std::runtime_error(error_msg);
+}
+
+void PlanManagerStateMachine::PrintCurrentState() const {
+  state_->PrintCurrentState(this);
+}
+
+void PlanManagerStateMachine::set_current_plan_start_time(const TimePoint &t) {
+  current_plan_start_time_ = std::make_unique<TimePoint>(t);
 }
 
 bool PlanManagerStateMachine::CommandHasError(const State &state,
@@ -39,8 +47,8 @@ void PlanManagerStateBase::receive_new_status_msg(
   throw std::runtime_error(error_msg);
 }
 
-void PlanManagerStateBase::QueueNewPlan(PlanManagerStateMachine *,
-                                        std::shared_ptr<PlanBase>) {
+void PlanManagerStateBase::QueueNewPlan(PlanManagerStateMachine *state_machine,
+                                        std::unique_ptr<PlanBase> plan) {
   string error_msg = "QueueNewPlan should not be called in state ";
   error_msg += get_state_name();
   error_msg += ".";
@@ -55,18 +63,9 @@ bool PlanManagerStateBase::CommandHasError(const State &, const Command &,
   throw std::runtime_error(error_msg);
 }
 
-double PlanManagerStateBase::get_current_plan_up_time(
-    const PlanManagerStateMachine *state_machine) const {
-  string error_msg = "get_current_plan_up_time should not be called in state ";
-  error_msg += get_state_name();
-  error_msg += ".";
-  throw std::runtime_error(error_msg);
-}
-
 bool PlanManagerStateBase::has_received_status_msg() const {
   string error_msg = "has_received_status_msg should not be called in state ";
   error_msg += get_state_name();
   error_msg += ".";
   throw std::runtime_error(error_msg);
 }
-

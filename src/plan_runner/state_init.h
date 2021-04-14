@@ -5,14 +5,18 @@ class StateInit : public PlanManagerStateBase {
  public:
   static PlanManagerStateBase *Instance();
   const PlanBase *
-  GetCurrentPlan(PlanManagerStateMachine *state_machine) const override;
+  GetCurrentPlan(PlanManagerStateMachine *state_machine,
+                 const TimePoint &t_now) const override;
   [[nodiscard]] bool has_received_status_msg() const override { return false; };
   void receive_new_status_msg(PlanManagerStateMachine *state_machine) const override;
   void QueueNewPlan(PlanManagerStateMachine *state_machine,
-                    std::shared_ptr<PlanBase> plan) override;
+                    std::unique_ptr<PlanBase> plan) override;
   void PrintCurrentState(const PlanManagerStateMachine *manager) const override;
   [[nodiscard]] PlanExecutionStatus get_plan_execution_status() const override {
     return PlanExecutionStatus::kNoActivePlan;
+  };
+  [[nodiscard]] PlanManagerStateTypes get_state_type() const override {
+    return PlanManagerStateTypes::kStateInit;
   };
  private:
   StateInit() : PlanManagerStateBase("INIT") {};

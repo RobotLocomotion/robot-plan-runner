@@ -12,16 +12,16 @@ PlanManagerStateBase* StateIdle::Instance() {
   return instance_;
 }
 
-const PlanBase * StateIdle::GetCurrentPlan(PlanManagerStateMachine
-                                             *state_machine) const {
+const PlanBase * StateIdle::GetCurrentPlan(PlanManagerStateMachine *state_machine,
+                                           const TimePoint &t_now) const {
   DRAKE_THROW_UNLESS(state_machine->num_plans() == 0);
   return nullptr;
 }
 
 void StateIdle::QueueNewPlan(PlanManagerStateMachine *state_machine,
-                                         std::shared_ptr<PlanBase> plan) {
+                             std::unique_ptr<PlanBase> plan) {
   auto& plan_queue = state_machine->get_mutable_plans_queue();
-  plan_queue.push(plan);
+  plan_queue.push(std::move(plan));
   ChangeState(state_machine, StateRunning::Instance());
 }
 
