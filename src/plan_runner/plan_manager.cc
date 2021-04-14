@@ -1,9 +1,11 @@
 #include "plan_manager.h"
-#include "plan_base.h"
+#include "plans/plan_base.h"
 
 #include "drake_lcmtypes/drake/lcmt_iiwa_command.hpp"
 
 using Eigen::VectorXd;
+using std::cout;
+using std::endl;
 
 IiwaPlanManager::IiwaPlanManager(double control_period)
     : control_period_(control_period) {
@@ -11,7 +13,7 @@ IiwaPlanManager::IiwaPlanManager(double control_period)
 }
 
 IiwaPlanManager::~IiwaPlanManager() {
-  // Terminate all threads.
+  // Wait for all threads to terminate.
   for (auto &a : threads_) {
     if (a.second.joinable()) {
       a.second.join();
@@ -21,17 +23,34 @@ IiwaPlanManager::~IiwaPlanManager() {
 
 void IiwaPlanManager::CalcCommandFromStatus() {
   lcm_status_command_ = std::make_unique<lcm::LCM>();
-  lcm_status_command_->subscribe("IIWA_STUATS", &IiwaPlanManager::HandleIiwaStatus,
+  lcm_status_command_->subscribe("IIWA_STATUS",
+                                 &IiwaPlanManager::HandleIiwaStatus,
                                  this);
-  // Call lcm handle until at least one status message is processed.
-  while (0 == lcm_status_command_->handleTimeout(10) ||
-         !state_machine_->has_received_status_msg()) {}
+  while (true) {
+    // >0 if a message was handled,
+    // 0 if the function timed out,
+    // <0 if an error occured.
+    if (lcm_status_command_->handleTimeout(10) < 0) {
+      break;
+    }
+  }
+}
 
+void IiwaPlanManager::PrintStateMachineStatus() const {
+  using namespace std::chrono_literals;
+  while (true) {
+    std::this_thread::sleep_for(1s);
+    {
+      state_machine_->PrintCurrentState();
+    }
+  }
 }
 
 void IiwaPlanManager::Run() {
-  threads_["status_command_thread"] = std::thread(
+  threads_["status_command"] = std::thread(
       &IiwaPlanManager::CalcCommandFromStatus, this);
+  threads_["print_status"] = std::thread(
+      &IiwaPlanManager::PrintStateMachineStatus, this);
 }
 
 void IiwaPlanManager::HandleIiwaStatus(
@@ -41,10 +60,14 @@ void IiwaPlanManager::HandleIiwaStatus(
     std::lock_guard<std::mutex> lock(mutex_iiwa_status_);
     iiwa_status_msg_ = *status_msg;
   }
+  const PlanBase* plan;
   {
     std::lock_guard<std::mutex> lock(mutex_state_machine_);
     state_machine_->receive_new_status_msg();
+    plan = state_machine_->GetCurrentPlan();
   }
+
+  // Compute command.
   State s(Eigen::Map<VectorXd>(iiwa_status_msg_.joint_position_measured.data(),
                                iiwa_status_msg_.num_joints),
           Eigen::Map<VectorXd>(iiwa_status_msg_.joint_position_measured.data(),
@@ -52,9 +75,8 @@ void IiwaPlanManager::HandleIiwaStatus(
           Eigen::Map<VectorXd>(iiwa_status_msg_.joint_torque_external.data(),
                                iiwa_status_msg_.num_joints));
   Command c;
-  const PlanBase* plan = state_machine_->GetCurrentPlan();
   if (plan) {
-    plan ->Step(s, control_period_,
+    plan->Step(s, control_period_,
                 state_machine_->get_current_plan_up_time(), &c);
   } else {
     //TODO: no command is sent if there is no plan. Make sure that this is
@@ -62,7 +84,13 @@ void IiwaPlanManager::HandleIiwaStatus(
     return;
   }
 
-  if (!state_machine_->CommandHasError(s, c)) {
+  // Check command for error.
+  bool command_has_error;
+  {
+    std::lock_guard<std::mutex> lock(mutex_state_machine_);
+    command_has_error = state_machine_->CommandHasError(s, c);
+  }
+  if (!command_has_error) {
     drake::lcmt_iiwa_command cmd_msg;
     cmd_msg.num_joints = status_msg->num_joints;
     cmd_msg.utime = status_msg->utime;

@@ -26,6 +26,11 @@ void PlanManagerStateMachine::set_current_plan_start_time(
       std::chrono::time_point<std::chrono::high_resolution_clock>>(t);
 }
 
+bool PlanManagerStateMachine::CommandHasError(const State &state,
+                                              const Command &cmd) {
+  return state_->CommandHasError(state, cmd, this);
+}
+
 void PlanManagerStateBase::receive_new_status_msg(
     PlanManagerStateMachine *) const {
   string error_msg = "receive_new_status_msg should not be called in state ";

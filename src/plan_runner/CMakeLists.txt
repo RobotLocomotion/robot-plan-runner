@@ -1,12 +1,10 @@
-add_library(robot_plans plan_base.h plan_base.cc
-        joint_space_plan.h joint_space_plan.cc)
-target_link_libraries(robot_plans drake::drake)
+add_subdirectory(plans)
 
 add_library(plan_manager_state_machine
         plan_manager_state_machine.h plan_manager_state_machine.cc
         state_init.h state_init.cc
         state_idle.h state_idle.cc
-        state_running.h state_running.cc state_error.cc state_error.h)
+        state_running.h state_running.cc state_error.cc state_error.h run_plan_manager.cc)
 target_link_libraries(plan_manager_state_machine robot_plans)
 
 add_library(plan_manager plan_manager.h plan_manager.cc)
@@ -17,3 +15,7 @@ target_link_libraries(run_zmq_example cppzmq)
 
 add_executable(sandbox sandbox.cc)
 target_link_libraries(sandbox drake::drake)
+
+add_executable(run_plan_manager run_plan_manager.cc)
+target_link_libraries(run_plan_manager plan_manager)
+

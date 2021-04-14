@@ -16,7 +16,7 @@ class IiwaPlanManager {
 
  private:
   const double control_period_;
-  std::mutex mutex_state_machine_;
+  mutable std::mutex mutex_state_machine_;
   std::unique_ptr<PlanManagerStateMachine> state_machine_;
   std::unordered_map<std::string, std::thread> threads_;
 
@@ -28,6 +28,9 @@ class IiwaPlanManager {
   void HandleIiwaStatus(const lcm::ReceiveBuffer* rbuf,
                         const std::string& channel,
                         const drake::lcmt_iiwa_status* status_msg);
+
+  // Printing thread.
+  void PrintStateMachineStatus() const;
 
   // Robot plans thread.
 

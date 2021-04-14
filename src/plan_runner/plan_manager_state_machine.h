@@ -4,7 +4,7 @@
 #include <queue>
 
 #include "drake/multibody/plant/multibody_plant.h"
-#include "plan_base.h"
+#include "plans/plan_base.h"
 
 enum PlanExecutionStatus { kFinished, kError, kNoActivePlan };
 
@@ -119,11 +119,6 @@ PlanManagerStateMachine::QueueNewPlan(std::shared_ptr<PlanBase> plan) {
 inline void
 PlanManagerStateMachine::ChangeState(PlanManagerStateBase *new_state) {
   state_ = new_state;
-}
-
-bool PlanManagerStateMachine::CommandHasError(const State &state,
-                                              const Command &cmd) {
- return state_->CommandHasError(state, cmd, this);
 }
 
 inline void PlanManagerStateMachine::PrintCurrentState() const {

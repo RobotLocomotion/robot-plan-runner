@@ -8,6 +8,8 @@ public:
       PlanManagerStateMachine *state_machine) const override {
     return nullptr;
   };
+  void QueueNewPlan(PlanManagerStateMachine *state_machine,
+                    std::shared_ptr<PlanBase> plan) override;
   void PrintCurrentState(
       const PlanManagerStateMachine *state_machine) const override;
   [[nodiscard]] PlanExecutionStatus get_plan_execution_status() const override {
