@@ -37,10 +37,10 @@ struct Command {
 
 class PlanBase {
 public:
-  virtual ~PlanBase() = 0;
+  virtual ~PlanBase() = default;
   virtual void Step(const State &state, double control_period, double t,
                     Command *cmd) const = 0;
-  virtual double duration() const = 0;
+  [[nodiscard]] virtual double duration() const = 0;
 protected:
   drake::multibody::MultibodyPlant<double> const * plant_{nullptr};
 };

@@ -1,7 +1,11 @@
-#include "plan_manager.h"
+#include <zmq.hpp>
+#include "drake_lcmtypes/drake/lcmt_iiwa_command.hpp"
+#include "drake_lcmtypes/drake/lcmt_robot_plan.hpp"
+#include "drake_lcmtypes/drake/lcmt_robot_state.hpp"
+
+#include "iiwa_plan_manager.h"
 #include "plans/plan_base.h"
 
-#include "drake_lcmtypes/drake/lcmt_iiwa_command.hpp"
 
 using Eigen::VectorXd;
 using std::cout;
@@ -21,11 +25,18 @@ IiwaPlanManager::~IiwaPlanManager() {
   }
 }
 
+void IiwaPlanManager::Run() {
+  threads_["status_command"] =
+      std::thread(&IiwaPlanManager::CalcCommandFromStatus, this);
+  threads_["print_status"] =
+      std::thread(&IiwaPlanManager::PrintStateMachineStatus, this);
+  threads_["receive_plans"] = std::thread(&IiwaPlanManager::ReceivePlans, this);
+}
+
 void IiwaPlanManager::CalcCommandFromStatus() {
   lcm_status_command_ = std::make_unique<lcm::LCM>();
   lcm_status_command_->subscribe("IIWA_STATUS",
-                                 &IiwaPlanManager::HandleIiwaStatus,
-                                 this);
+                                 &IiwaPlanManager::HandleIiwaStatus, this);
   while (true) {
     // >0 if a message was handled,
     // 0 if the function timed out,
@@ -40,17 +51,22 @@ void IiwaPlanManager::PrintStateMachineStatus() const {
   using namespace std::chrono_literals;
   while (true) {
     std::this_thread::sleep_for(1s);
-    {
-      state_machine_->PrintCurrentState();
-    }
+    { state_machine_->PrintCurrentState(); }
   }
 }
 
-void IiwaPlanManager::Run() {
-  threads_["status_command"] = std::thread(
-      &IiwaPlanManager::CalcCommandFromStatus, this);
-  threads_["print_status"] = std::thread(
-      &IiwaPlanManager::PrintStateMachineStatus, this);
+void IiwaPlanManager::ReceivePlans() {
+  zmq::context_t ctx;
+  zmq::socket_t socket(ctx, ZMQ_REP);
+  socket.bind("tcp://*:5555");
+
+  while(true) {
+    zmq::message_t plan_msg;
+    socket.recv(plan_msg, zmq::recv_flags::none);
+
+
+
+  }
 }
 
 void IiwaPlanManager::HandleIiwaStatus(
@@ -60,7 +76,7 @@ void IiwaPlanManager::HandleIiwaStatus(
     std::lock_guard<std::mutex> lock(mutex_iiwa_status_);
     iiwa_status_msg_ = *status_msg;
   }
-  const PlanBase* plan;
+  const PlanBase *plan;
   {
     std::lock_guard<std::mutex> lock(mutex_state_machine_);
     state_machine_->receive_new_status_msg();
@@ -76,10 +92,10 @@ void IiwaPlanManager::HandleIiwaStatus(
                                iiwa_status_msg_.num_joints));
   Command c;
   if (plan) {
-    plan->Step(s, control_period_,
-                state_machine_->get_current_plan_up_time(), &c);
+    plan->Step(s, control_period_, state_machine_->get_current_plan_up_time(),
+               &c);
   } else {
-    //TODO: no command is sent if there is no plan. Make sure that this is
+    // TODO: no command is sent if there is no plan. Make sure that this is
     // the desired behavior.
     return;
   }

@@ -33,6 +33,6 @@ class IiwaPlanManager {
   void PrintStateMachineStatus() const;
 
   // Robot plans thread.
-
+  void ReceivePlans();
 };
 

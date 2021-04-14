@@ -46,7 +46,6 @@ public:
 private:
   friend class PlanManagerStateBase;
   inline void ChangeState(PlanManagerStateBase *new_state);
-  std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant_;
   PlanManagerStateBase *state_{nullptr};
   std::queue<std::shared_ptr<PlanBase>> plans_;
   std::unique_ptr<std::chrono::time_point<std::chrono::high_resolution_clock>>
