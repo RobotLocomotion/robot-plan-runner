@@ -78,8 +78,7 @@ void IiwaPlanManager::ReceivePlans() {
 
     std::string reply_msg;
     while (true) {
-      using namespace std::chrono_literals;
-      std::this_thread::sleep_for(0.1s);
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
       if (state_machine_->get_state_type() ==
           PlanManagerStateTypes::kStateRunning) {

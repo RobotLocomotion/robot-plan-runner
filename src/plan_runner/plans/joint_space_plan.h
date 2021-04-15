@@ -7,7 +7,7 @@ class JointSpacePlan : public PlanBase {
 public:
   JointSpacePlan(drake::trajectories::PiecewisePolynomial<double> q_traj,
   const drake::multibody::MultibodyPlant<double> *plant)
-      : q_traj_(std::move(q_traj)) {plant_ = plant;};
+      : PlanBase(plant), q_traj_(std::move(q_traj)) {};
   ~JointSpacePlan() override = default;
   void Step(const State &state, double control_period, double t,
             Command *cmd) const override;
