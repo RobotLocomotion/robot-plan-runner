@@ -8,7 +8,12 @@
 
 // TODO: this is not used right now.
 enum PlanExecutionStatus { kFinished, kError, kNoActivePlan };
-enum PlanManagerStateTypes {kStateInit, kStateIdle, kStateRunning, kStateError};
+enum PlanManagerStateTypes {
+  kStateInit,
+  kStateIdle,
+  kStateRunning,
+  kStateError
+};
 typedef std::chrono::time_point<std::chrono::high_resolution_clock> TimePoint;
 class PlanManagerStateBase;
 
@@ -22,16 +27,15 @@ public:
   void QueueNewPlan(std::unique_ptr<PlanBase> plan);
   bool CommandHasError(const State &state, const Command &cmd);
 
-  [[nodiscard]] inline bool has_received_status_msg() const;
-  inline void receive_new_status_msg();
-  [[nodiscard]] inline PlanExecutionStatus get_plan_execution_status() const;
-  [[nodiscard]] inline PlanManagerStateTypes get_state_type() const;
+  [[nodiscard]] bool has_received_status_msg() const;
+  void receive_new_status_msg();
+  [[nodiscard]] PlanExecutionStatus get_plan_execution_status() const;
+  [[nodiscard]] PlanManagerStateTypes get_state_type() const;
   // Other methods.
   [[nodiscard]] size_t num_plans() const { return plans_.size(); }
   std::queue<std::unique_ptr<PlanBase>> &get_mutable_plans_queue() {
     return plans_;
   };
-  // TODO: replace shared_ptr with unique_ptr (or something else?).
   [[nodiscard]] const std::queue<std::unique_ptr<PlanBase>> &
   get_plans_queue() const {
     return plans_;
@@ -41,7 +45,7 @@ public:
   //  enabled by forwarding in PlanManagerStateBase.
   void set_current_plan_start_time(const TimePoint &t);
   void reset_current_plan_start_time() { current_plan_start_time_.reset(); };
-  [[nodiscard]] const TimePoint* get_current_plan_start_time() const {
+  [[nodiscard]] const TimePoint *get_current_plan_start_time() const {
     return current_plan_start_time_.get();
   };
 
@@ -51,14 +55,14 @@ private:
   PlanManagerStateBase *state_{nullptr};
   std::queue<std::unique_ptr<PlanBase>> plans_;
   std::unique_ptr<TimePoint> current_plan_start_time_{nullptr};
-
 };
 
 class PlanManagerStateBase {
 public:
   // Virtual functions.
-  [[nodiscard]] virtual double GetCurrentPlanUpTime(const PlanManagerStateMachine *state_machine,
-                                                    const TimePoint &t_now) const;
+  [[nodiscard]] virtual double
+  GetCurrentPlanUpTime(const PlanManagerStateMachine *state_machine,
+                       const TimePoint &t_now) const;
   [[nodiscard]] virtual bool has_received_status_msg() const;
   virtual void
   receive_new_status_msg(PlanManagerStateMachine *state_machine) const;
@@ -73,9 +77,8 @@ public:
 
   virtual void
   PrintCurrentState(const PlanManagerStateMachine *state_machine) const = 0;
-  virtual const PlanBase *
-  GetCurrentPlan(PlanManagerStateMachine *state_machine,
-                 const TimePoint &t_now) const = 0;
+  virtual const PlanBase *GetCurrentPlan(PlanManagerStateMachine *state_machine,
+                                         const TimePoint &t_now) const = 0;
 
   // Other functions.
   [[nodiscard]] const std::string &get_state_name() const {
@@ -84,7 +87,7 @@ public:
 
 protected:
   explicit PlanManagerStateBase(std::string state_name)
-      : state_name_(std::move(state_name)) {};
+      : state_name_(std::move(state_name)){};
   static void ChangeState(PlanManagerStateMachine *state_machine,
                           PlanManagerStateBase *new_state) {
     state_machine->ChangeState(new_state);
@@ -107,8 +110,7 @@ PlanManagerStateMachine::get_plan_execution_status() const {
   return state_->get_plan_execution_status();
 }
 
-inline PlanManagerStateTypes
-PlanManagerStateMachine::get_state_type() const {
+inline PlanManagerStateTypes PlanManagerStateMachine::get_state_type() const {
   return state_->get_state_type();
 }
 
@@ -120,4 +122,28 @@ PlanManagerStateMachine::QueueNewPlan(std::unique_ptr<PlanBase> plan) {
 inline void
 PlanManagerStateMachine::ChangeState(PlanManagerStateBase *new_state) {
   state_ = new_state;
+}
+
+inline double
+PlanManagerStateMachine::GetCurrentPlanUpTime(const TimePoint &t_now) const {
+  return state_->GetCurrentPlanUpTime(this, t_now);
+}
+
+inline const PlanBase *
+PlanManagerStateMachine::GetCurrentPlan(const TimePoint &t_now) {
+  return state_->GetCurrentPlan(this, t_now);
+}
+
+inline void PlanManagerStateMachine::PrintCurrentState() const {
+  state_->PrintCurrentState(this);
+}
+
+inline void
+PlanManagerStateMachine::set_current_plan_start_time(const TimePoint &t) {
+  current_plan_start_time_ = std::make_unique<TimePoint>(t);
+}
+
+inline bool PlanManagerStateMachine::CommandHasError(const State &state,
+                                                     const Command &cmd) {
+  return state_->CommandHasError(state, cmd, this);
 }

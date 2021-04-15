@@ -8,15 +8,6 @@ PlanManagerStateMachine::PlanManagerStateMachine() {
   state_ = StateInit::Instance();
 }
 
-double
-PlanManagerStateMachine::GetCurrentPlanUpTime(const TimePoint &t_now) const {
-  return state_->GetCurrentPlanUpTime(this, t_now);
-}
-
-const PlanBase *PlanManagerStateMachine::GetCurrentPlan(const TimePoint &t_now) {
-  return state_->GetCurrentPlan(this, t_now);
-}
-
 double PlanManagerStateBase::GetCurrentPlanUpTime(
     const PlanManagerStateMachine *state_machine,
     const TimePoint &t_now) const {
@@ -24,19 +15,6 @@ double PlanManagerStateBase::GetCurrentPlanUpTime(
   error_msg += get_state_name();
   error_msg += ".";
   throw std::runtime_error(error_msg);
-}
-
-void PlanManagerStateMachine::PrintCurrentState() const {
-  state_->PrintCurrentState(this);
-}
-
-void PlanManagerStateMachine::set_current_plan_start_time(const TimePoint &t) {
-  current_plan_start_time_ = std::make_unique<TimePoint>(t);
-}
-
-bool PlanManagerStateMachine::CommandHasError(const State &state,
-                                              const Command &cmd) {
-  return state_->CommandHasError(state, cmd, this);
 }
 
 void PlanManagerStateBase::receive_new_status_msg(
