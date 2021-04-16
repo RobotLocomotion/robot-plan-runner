@@ -6,7 +6,9 @@
 class IiwaPlanFactory : PlanFactory {
 public:
   IiwaPlanFactory();
+
   ~IiwaPlanFactory() override = default;
+
   [[nodiscard]] std::unique_ptr<PlanBase>
   MakePlan(const drake::lcmt_robot_plan &msg_plan) const override;
 

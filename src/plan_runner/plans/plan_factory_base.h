@@ -9,7 +9,9 @@
 class PlanFactory {
 public:
   virtual ~PlanFactory() = default;
+
   [[nodiscard]] virtual std::unique_ptr<PlanBase>
+
   MakePlan(const drake::lcmt_robot_plan &msg_plan) const = 0;
 
 protected:
