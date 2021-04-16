@@ -4,10 +4,9 @@
 #include <queue>
 
 #include "drake/multibody/plant/multibody_plant.h"
-#include "plans/plan_base.h"
+#include "../plans/plan_base.h"
 
 // TODO: this is not used right now.
-enum PlanExecutionStatus { kFinished, kError, kNoActivePlan };
 enum PlanManagerStateTypes {
   kStateInit,
   kStateIdle,
@@ -22,20 +21,40 @@ public:
   PlanManagerStateMachine();
   // State-dependent methods.
   [[nodiscard]] const PlanBase *GetCurrentPlan(const TimePoint &t_now);
+
+  // Returns in seconds how long the current plan has been active.
   [[nodiscard]] double GetCurrentPlanUpTime(const TimePoint &t_now) const;
+
+  // Print information about the currently active state.
   void PrintCurrentState() const;
+
+  // Tries to add a plan to the queue of plans to be executed. Note that the
+  // maximum size of this queue is 1 in the current implementation.
   void QueueNewPlan(std::unique_ptr<PlanBase> plan);
+
+  // Checks a command computed by the plan.Step() function for errors.
+  // Currently checks for:
+  // 1. Nans
+  // 2. If cmd.q_cmd and state.q is too far away with a hard-coded threshold.
   bool CommandHasError(const State &state, const Command &cmd);
 
+  // Returns true if an IIWA_STATUS message has been received.
   [[nodiscard]] bool has_received_status_msg() const;
+
+  // Called when a new IIWA_STATUS message is received. If the current state is
+  //  INIT, the state is changed to IDLE. If the current state is IDLE,
+  //  RUNNING or ERROR, this function does nothing.
   void receive_new_status_msg();
-  [[nodiscard]] PlanExecutionStatus get_plan_execution_status() const;
+
   [[nodiscard]] PlanManagerStateTypes get_state_type() const;
+
   // Other methods.
   [[nodiscard]] size_t num_plans() const { return plans_.size(); }
+
   std::queue<std::unique_ptr<PlanBase>> &get_mutable_plans_queue() {
     return plans_;
   };
+
   [[nodiscard]] const std::queue<std::unique_ptr<PlanBase>> &
   get_plans_queue() const {
     return plans_;
@@ -44,7 +63,9 @@ public:
   // TODO: "time" methods should probably be private. Access by states can be
   //  enabled by forwarding in PlanManagerStateBase.
   void set_current_plan_start_time(const TimePoint &t);
+
   void reset_current_plan_start_time() { current_plan_start_time_.reset(); };
+
   [[nodiscard]] const TimePoint *get_current_plan_start_time() const {
     return current_plan_start_time_.get();
   };
@@ -63,20 +84,23 @@ public:
   [[nodiscard]] virtual double
   GetCurrentPlanUpTime(const PlanManagerStateMachine *state_machine,
                        const TimePoint &t_now) const;
+
   [[nodiscard]] virtual bool has_received_status_msg() const;
+
   virtual void
   receive_new_status_msg(PlanManagerStateMachine *state_machine) const;
+
   virtual void QueueNewPlan(PlanManagerStateMachine *state_machine,
                             std::unique_ptr<PlanBase> plan);
+
   virtual bool CommandHasError(const State &state, const Command &cmd,
                                PlanManagerStateMachine *state_machine);
   // Pure virtual functions.
-  [[nodiscard]] virtual PlanExecutionStatus
-  get_plan_execution_status() const = 0;
   [[nodiscard]] virtual PlanManagerStateTypes get_state_type() const = 0;
 
   virtual void
   PrintCurrentState(const PlanManagerStateMachine *state_machine) const = 0;
+
   virtual const PlanBase *GetCurrentPlan(PlanManagerStateMachine *state_machine,
                                          const TimePoint &t_now) const = 0;
 
@@ -88,6 +112,7 @@ public:
 protected:
   explicit PlanManagerStateBase(std::string state_name)
       : state_name_(std::move(state_name)){};
+
   static void ChangeState(PlanManagerStateMachine *state_machine,
                           PlanManagerStateBase *new_state) {
     state_machine->ChangeState(new_state);
@@ -103,11 +128,6 @@ inline bool PlanManagerStateMachine::has_received_status_msg() const {
 
 inline void PlanManagerStateMachine::receive_new_status_msg() {
   state_->receive_new_status_msg(this);
-}
-
-inline PlanExecutionStatus
-PlanManagerStateMachine::get_plan_execution_status() const {
-  return state_->get_plan_execution_status();
 }
 
 inline PlanManagerStateTypes PlanManagerStateMachine::get_state_type() const {

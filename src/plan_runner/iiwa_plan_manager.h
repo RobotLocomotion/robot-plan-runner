@@ -5,7 +5,7 @@
 #include "lcm/lcm-cpp.hpp"
 #include "drake_lcmtypes/drake/lcmt_iiwa_status.hpp"
 
-#include "plan_manager_state_machine.h"
+#include "state_machine/plan_manager_state_machine.h"
 #include "plans/iiwa_plan_factory.h"
 
 

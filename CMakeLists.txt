@@ -60,7 +60,7 @@ list(APPEND CMAKE_PREFIX_PATH "${PYTHON_EXEC_PREFIX}")
 find_package(PythonLibs ${FIND_PYTHON_INTERP_VERSION} MODULE REQUIRED)
 
 find_package(drake CONFIG REQUIRED)
-
+find_package(Threads REQUIRED)
 find_package(cppzmq REQUIRED)
 
 get_filename_component(PYTHONPATH

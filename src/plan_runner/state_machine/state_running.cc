@@ -47,10 +47,6 @@ double StateRunning::GetCurrentPlanUpTime(const PlanManagerStateMachine *state_m
   return t_elapsed_duration.count();
 }
 
-PlanExecutionStatus StateRunning::get_plan_execution_status() const {
-  throw std::runtime_error("not implemented yet.");
-}
-
 void StateRunning::QueueNewPlan(PlanManagerStateMachine *state_machine,
                                 std::unique_ptr<PlanBase> plan) {
   //TODO: what is the desired behavior when receiving a new plan while a plan
