@@ -15,6 +15,7 @@ struct ContactInfo {
 };
 
 struct State {
+  State() = default;
   State(const Eigen::Ref<const Eigen::VectorXd> &q,
         const Eigen::Ref<const Eigen::VectorXd> &v,
         const Eigen::Ref<const Eigen::VectorXd> &tau_ext)
@@ -26,6 +27,7 @@ struct State {
 };
 
 struct Command {
+  Command() = default;
   Command(const Eigen::Ref<const Eigen::VectorXd> &q_cmd,
           const Eigen::Ref<const Eigen::VectorXd> &tau_cmd)
       : q_cmd(q_cmd), tau_cmd(tau_cmd){};
@@ -35,6 +37,16 @@ struct Command {
 
 class PlanBase {
 public:
+  explicit PlanBase(const drake::multibody::MultibodyPlant<double> *plant)
+      : plant_(plant){};
+
+  virtual ~PlanBase() = default;
+
   virtual void Step(const State &state, double control_period, double t,
                     Command *cmd) const = 0;
+
+  [[nodiscard]] virtual double duration() const = 0;
+
+protected:
+  drake::multibody::MultibodyPlant<double> const *const plant_{nullptr};
 };

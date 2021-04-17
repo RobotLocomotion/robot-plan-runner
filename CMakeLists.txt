@@ -31,7 +31,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 cmake_minimum_required(VERSION 3.10.2)
-project(contact_trajectory_optimization)
+project(robot_plan_runner)
 
 # N.B. This is a temporary flag. It only really applies to Linux, as Mac
 # does not need X11.
@@ -60,7 +60,7 @@ list(APPEND CMAKE_PREFIX_PATH "${PYTHON_EXEC_PREFIX}")
 find_package(PythonLibs ${FIND_PYTHON_INTERP_VERSION} MODULE REQUIRED)
 
 find_package(drake CONFIG REQUIRED)
-
+find_package(Threads REQUIRED)
 find_package(cppzmq REQUIRED)
 
 get_filename_component(PYTHONPATH

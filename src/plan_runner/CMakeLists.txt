@@ -1,11 +1,17 @@
-add_library(plan_base plan_base.h plan_base.cc)
-target_link_libraries(plan_base drake::drake)
+add_subdirectory(plans)
+add_subdirectory(state_machine)
 
-add_library(plan_manager_state plan_manager_state.h plan_manager_state.cc)
-target_link_libraries(plan_manager_state plan_base)
 
-add_library(plan_manager plan_manager.h plan_manager.cc)
-target_link_libraries(plan_manager plan_manager_state)
+add_library(iiwa_plan_manager iiwa_plan_manager.h iiwa_plan_manager.cc)
+target_link_libraries(iiwa_plan_manager
+        plan_manager_state_machine cppzmq iiwa_plan_factory Threads::Threads)
 
 add_executable(run_zmq_example run_zmq_example.cc)
-target_link_libraries(run_zmq_example cppzmq)
+target_link_libraries(run_zmq_example cppzmq iiwa_plan_factory)
+
+add_executable(sandbox sandbox.cc)
+target_link_libraries(sandbox drake::drake Threads::Threads)
+
+add_executable(run_plan_manager run_plan_manager.cc)
+target_link_libraries(run_plan_manager iiwa_plan_manager)
+
