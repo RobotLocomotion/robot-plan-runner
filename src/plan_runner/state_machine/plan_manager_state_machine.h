@@ -20,6 +20,7 @@ class PlanManagerStateMachine {
 public:
   PlanManagerStateMachine();
   // State-dependent methods.
+  // TODO: separate the logic that schedules plans into another function.
   [[nodiscard]] const PlanBase *GetCurrentPlan(const TimePoint &t_now);
 
   // Returns in seconds how long the current plan has been active.
