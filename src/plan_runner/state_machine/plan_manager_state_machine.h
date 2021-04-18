@@ -3,8 +3,8 @@
 #include <memory>
 #include <queue>
 
-#include "drake/multibody/plant/multibody_plant.h"
 #include "../plans/plan_base.h"
+#include "drake/multibody/plant/multibody_plant.h"
 
 // TODO: this is not used right now.
 enum PlanManagerStateTypes {
@@ -13,7 +13,8 @@ enum PlanManagerStateTypes {
   kStateRunning,
   kStateError
 };
-typedef std::chrono::time_point<std::chrono::high_resolution_clock> TimePoint;
+using TimePoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
+using DoubleSeconds = std::chrono::duration<double, std::ratio<1, 1>>;
 class PlanManagerStateBase;
 
 class PlanManagerStateMachine {
@@ -21,10 +22,13 @@ public:
   PlanManagerStateMachine();
   // State-dependent methods.
   // TODO: separate the logic that schedules plans into another function.
-  [[nodiscard]] const PlanBase *GetCurrentPlan(const TimePoint &t_now);
+  [[nodiscard]] const PlanBase *GetCurrentPlan(const TimePoint &t_now_seconds);
+  [[nodiscard]] const PlanBase *GetCurrentPlan(double t_now_seconds);
 
   // Returns in seconds how long the current plan has been active.
-  [[nodiscard]] double GetCurrentPlanUpTime(const TimePoint &t_now) const;
+  [[nodiscard]] double
+  GetCurrentPlanUpTime(const TimePoint &t_now_seconds) const;
+  [[nodiscard]] double GetCurrentPlanUpTime(double t_now_seconds) const;
 
   // Print information about the currently active state.
   void PrintCurrentState() const;
@@ -63,12 +67,14 @@ public:
 
   // TODO: "time" methods should probably be private. Access by states can be
   //  enabled by forwarding in PlanManagerStateBase.
-  void set_current_plan_start_time(const TimePoint &t);
+  void set_current_plan_start_time(double t_seconds);
 
-  void reset_current_plan_start_time() { current_plan_start_time_.reset(); };
+  void reset_current_plan_start_time() {
+    current_plan_start_time_seconds_.reset();
+  };
 
-  [[nodiscard]] const TimePoint *get_current_plan_start_time() const {
-    return current_plan_start_time_.get();
+  [[nodiscard]] const double *get_current_plan_start_time() const {
+    return current_plan_start_time_seconds_.get();
   };
 
 private:
@@ -76,7 +82,11 @@ private:
   inline void ChangeState(PlanManagerStateBase *new_state);
   PlanManagerStateBase *state_{nullptr};
   std::queue<std::unique_ptr<PlanBase>> plans_;
-  std::unique_ptr<TimePoint> current_plan_start_time_{nullptr};
+
+  // In PlanManagerStateMachine, this stores TimePoint::time_since_epoch() in
+  // seconds as a double.
+  // In Drake systems, this stores context.get_time().
+  std::unique_ptr<double> current_plan_start_time_seconds_{nullptr};
 };
 
 class PlanManagerStateBase {
@@ -84,7 +94,7 @@ public:
   // Virtual functions.
   [[nodiscard]] virtual double
   GetCurrentPlanUpTime(const PlanManagerStateMachine *state_machine,
-                       const TimePoint &t_now) const;
+                       double t_now) const;
 
   [[nodiscard]] virtual bool has_received_status_msg() const;
 
@@ -103,7 +113,7 @@ public:
   PrintCurrentState(const PlanManagerStateMachine *state_machine) const = 0;
 
   virtual const PlanBase *GetCurrentPlan(PlanManagerStateMachine *state_machine,
-                                         const TimePoint &t_now) const = 0;
+                                         double t_now_seconds) const = 0;
 
   // Other functions.
   [[nodiscard]] const std::string &get_state_name() const {
@@ -147,11 +157,26 @@ PlanManagerStateMachine::ChangeState(PlanManagerStateBase *new_state) {
 
 inline double
 PlanManagerStateMachine::GetCurrentPlanUpTime(const TimePoint &t_now) const {
+  double t_now_double =
+      std::chrono::duration_cast<DoubleSeconds>(t_now.time_since_epoch())
+          .count();
+  return state_->GetCurrentPlanUpTime(this, t_now_double);
+}
+
+inline double
+PlanManagerStateMachine::GetCurrentPlanUpTime(double t_now) const {
   return state_->GetCurrentPlanUpTime(this, t_now);
 }
 
 inline const PlanBase *
 PlanManagerStateMachine::GetCurrentPlan(const TimePoint &t_now) {
+  double t_now_double =
+      std::chrono::duration_cast<DoubleSeconds>(t_now.time_since_epoch())
+          .count();
+  return state_->GetCurrentPlan(this, t_now_double);
+}
+
+inline const PlanBase *PlanManagerStateMachine::GetCurrentPlan(double t_now) {
   return state_->GetCurrentPlan(this, t_now);
 }
 
@@ -160,8 +185,8 @@ inline void PlanManagerStateMachine::PrintCurrentState() const {
 }
 
 inline void
-PlanManagerStateMachine::set_current_plan_start_time(const TimePoint &t) {
-  current_plan_start_time_ = std::make_unique<TimePoint>(t);
+PlanManagerStateMachine::set_current_plan_start_time(double t_seconds) {
+  current_plan_start_time_seconds_ = std::make_unique<double>(t_seconds);
 }
 
 inline bool PlanManagerStateMachine::CommandHasError(const State &state,

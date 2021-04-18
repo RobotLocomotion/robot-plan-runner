@@ -13,7 +13,7 @@ PlanManagerStateBase *StateInit::Instance() {
 }
 
 const PlanBase *StateInit::GetCurrentPlan(PlanManagerStateMachine *state_machine,
-                                          const TimePoint &t_now) const {
+                                          double t_now) const {
   DRAKE_THROW_UNLESS(state_machine->num_plans() == 0);
   return nullptr;
 }

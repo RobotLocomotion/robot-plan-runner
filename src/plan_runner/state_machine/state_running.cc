@@ -14,12 +14,12 @@ PlanManagerStateBase* StateRunning::Instance() {
 }
 
 const PlanBase * StateRunning::GetCurrentPlan(PlanManagerStateMachine *state_machine,
-                                              const TimePoint &t_now) const {
+                                              double t_now) const {
   auto& plans = state_machine->get_mutable_plans_queue();
   DRAKE_THROW_UNLESS(!plans.empty());
-  const TimePoint *t_start = state_machine->get_current_plan_start_time();
+  const double *t_start = state_machine->get_current_plan_start_time();
   if (t_start == nullptr) {
-    // current_plan_start_time_ is nullptr, meaning that there is no active
+    // current_plan_start_time_seconds_ is nullptr, meaning that there is no active
     // plan.
     state_machine->set_current_plan_start_time(t_now);
   } else {
@@ -39,12 +39,10 @@ const PlanBase * StateRunning::GetCurrentPlan(PlanManagerStateMachine *state_mac
 }
 
 double StateRunning::GetCurrentPlanUpTime(const PlanManagerStateMachine *state_machine,
-                                          const TimePoint &t_now) const {
-  const TimePoint *t_start = state_machine->get_current_plan_start_time();
+                                          double t_now) const {
+  const double* t_start = state_machine->get_current_plan_start_time();
   DRAKE_THROW_UNLESS(t_start != nullptr);
-  std::chrono::duration<double> t_elapsed_duration =
-      t_now - *t_start;
-  return t_elapsed_duration.count();
+  return t_now - *t_start;
 }
 
 void StateRunning::QueueNewPlan(PlanManagerStateMachine *state_machine,

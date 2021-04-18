@@ -7,7 +7,7 @@ public:
 
   const PlanBase *
   GetCurrentPlan(PlanManagerStateMachine *state_machine,
-                 const TimePoint &t_now) const override;
+                 double t_now) const override;
 
   [[nodiscard]] bool has_received_status_msg() const override { return true; };
 

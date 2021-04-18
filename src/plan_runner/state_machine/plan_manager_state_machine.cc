@@ -10,7 +10,7 @@ PlanManagerStateMachine::PlanManagerStateMachine() {
 
 double PlanManagerStateBase::GetCurrentPlanUpTime(
     const PlanManagerStateMachine *state_machine,
-    const TimePoint &t_now) const {
+    double t_now) const {
   string error_msg = "GetCurrentPlanUpTime should not be called in state ";
   error_msg += get_state_name();
   error_msg += ".";
