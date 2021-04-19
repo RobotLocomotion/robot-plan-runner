@@ -22,16 +22,16 @@ public:
   PlanManagerStateMachine();
   // State-dependent methods.
   // TODO: separate the logic that schedules plans into another function.
-  [[nodiscard]] const PlanBase *GetCurrentPlan(const TimePoint &t_now_seconds);
+  [[nodiscard]] const PlanBase *GetCurrentPlan(const TimePoint &t_now);
   [[nodiscard]] const PlanBase *GetCurrentPlan(double t_now_seconds);
 
   // Returns in seconds how long the current plan has been active.
   [[nodiscard]] double
-  GetCurrentPlanUpTime(const TimePoint &t_now_seconds) const;
+  GetCurrentPlanUpTime(const TimePoint &t_now) const;
   [[nodiscard]] double GetCurrentPlanUpTime(double t_now_seconds) const;
 
   // Print information about the currently active state.
-  void PrintCurrentState() const;
+  std::string PrintCurrentState() const;
 
   // Tries to add a plan to the queue of plans to be executed. Note that the
   // maximum size of this queue is 1 in the current implementation.
@@ -109,7 +109,7 @@ public:
   // Pure virtual functions.
   [[nodiscard]] virtual PlanManagerStateTypes get_state_type() const = 0;
 
-  virtual void
+  virtual std::string
   PrintCurrentState(const PlanManagerStateMachine *state_machine) const = 0;
 
   virtual const PlanBase *GetCurrentPlan(PlanManagerStateMachine *state_machine,
@@ -180,8 +180,8 @@ inline const PlanBase *PlanManagerStateMachine::GetCurrentPlan(double t_now) {
   return state_->GetCurrentPlan(this, t_now);
 }
 
-inline void PlanManagerStateMachine::PrintCurrentState() const {
-  state_->PrintCurrentState(this);
+inline std::string PlanManagerStateMachine::PrintCurrentState() const {
+  return state_->PrintCurrentState(this);
 }
 
 inline void

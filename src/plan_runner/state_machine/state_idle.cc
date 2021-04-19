@@ -25,10 +25,14 @@ void StateIdle::QueueNewPlan(PlanManagerStateMachine *state_machine,
   ChangeState(state_machine, StateRunning::Instance());
 }
 
-void StateIdle::PrintCurrentState(
+std::string StateIdle::PrintCurrentState(
     const PlanManagerStateMachine *state_machine) const {
-  cout << "[IDLE]: waiting for new plans. "
-       << "Number of plans: " << state_machine->num_plans() << "." << endl;
+  std::string msg("[IDLE]: waiting for new plans. ");
+  msg += "Number of plans: ";
+  msg += std::to_string(state_machine->num_plans());
+  msg += ".";
+  cout << msg << endl;
+  return std::move(msg);
 }
 
 

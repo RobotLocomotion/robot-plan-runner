@@ -30,8 +30,12 @@ void StateInit::QueueNewPlan(PlanManagerStateMachine *state_machine,
             << std::endl;
 }
 
-void StateInit::PrintCurrentState(
+std::string StateInit::PrintCurrentState(
     const PlanManagerStateMachine *state_machine) const {
-  cout << "[INIT]: waiting for IIWA_STATUS. "
-       << "Number of plans: " << state_machine->num_plans() << "." << endl;
+  std::string msg("[INIT]: waiting for IIWA_STATUS. ");
+  msg += "Number of plans: ";
+  msg += std::to_string(state_machine->num_plans());
+  msg += ".";
+  cout << msg << endl;
+  return std::move(msg);
 }

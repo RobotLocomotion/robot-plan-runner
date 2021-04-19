@@ -15,7 +15,7 @@ public:
   void QueueNewPlan(PlanManagerStateMachine *state_machine,
                     std::unique_ptr<PlanBase> plan) override;
 
-  void PrintCurrentState(const PlanManagerStateMachine *manager) const override;
+  std::string PrintCurrentState(const PlanManagerStateMachine *manager) const override;
 
   [[nodiscard]] PlanManagerStateTypes get_state_type() const override {
     return PlanManagerStateTypes::kStateInit;

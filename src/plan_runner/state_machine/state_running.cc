@@ -73,10 +73,14 @@ bool StateRunning::CommandHasError(const State &state,
   return is_error;
 }
 
-void StateRunning::PrintCurrentState(
+std::string StateRunning::PrintCurrentState(
     const PlanManagerStateMachine *state_machine) const {
-  cout << "[RUNNING]: executing a plan. "
-       << "Number of plans: " << state_machine->num_plans() << "." << endl;
+  std::string msg("[RUNNING]: executing a plan. ");
+  msg += "Number of plans: ";
+  msg += std::to_string(state_machine->num_plans());
+  msg += ".";
+  cout << msg << endl;
+  return std::move(msg);
 }
 
 
