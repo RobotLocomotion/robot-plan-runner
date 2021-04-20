@@ -1,10 +1,13 @@
-#include "iiwa_plan_manager_system.h"
 #include "drake/common/value.h"
+#include <Eigen/Dense>
+
+#include "iiwa_plan_manager_system.h"
 
 using drake::lcmt_iiwa_command;
 using drake::lcmt_iiwa_status;
 using drake::lcmt_robot_plan;
 using drake::systems::BasicVector;
+using Eigen::VectorXd;
 
 IiwaPlanManagerSystem::IiwaPlanManagerSystem(double control_period_seconds)
     : control_period_seconds_(control_period_seconds),
@@ -44,9 +47,60 @@ void IiwaPlanManagerSystem::UpdateIiwaCommand(
       get_robot_plan_input_port().Eval<lcmt_robot_plan>(context);
   auto &msg_iiwa_command =
       state->get_mutable_abstract_state<lcmt_iiwa_command>(abstract_state_idx_);
+  // Handle new robot plan messages.
+  if (msg_robot_plan.num_states > 0 and
+      msg_robot_plan.utime != last_robot_plan_utime_) {
+    // has new message.
+    auto plan = plan_factory_.MakePlan(msg_robot_plan);
+    state_machine_.QueueNewPlan(std::move(plan));
+    last_robot_plan_utime_ = msg_robot_plan.utime;
+  }
 
-  if (msg_iiwa_status.num_joints != 0) {
+  // Handle new iiwa status messages.
+  if (msg_iiwa_status.num_joints == 0) {
+    return;
+  } else {
     state_machine_.receive_new_status_msg();
+  }
+
+  // Compute iiwa_command.
+  const double t_now = context.get_time();
+  auto plan = state_machine_.GetCurrentPlan(t_now);
+
+  State s(
+      Eigen::Map<const VectorXd>(msg_iiwa_status.joint_position_measured.data(),
+                                 msg_iiwa_status.num_joints),
+      Eigen::Map<const VectorXd>(
+          msg_iiwa_status.joint_velocity_estimated.data(),
+          msg_iiwa_status.num_joints),
+      Eigen::Map<const VectorXd>(msg_iiwa_status.joint_torque_external.data(),
+                                 msg_iiwa_status.num_joints));
+  Command c;
+
+  if (plan) {
+    plan->Step(s, control_period_seconds_,
+               state_machine_.GetCurrentPlanUpTime(t_now), &c);
+  } else {
+    // send an empty iiwa command message with utime = -1. drake-iiwa-driver
+    // throws if msg_iiwa_command.num_joints != 7, unless msg_iiwa_command
+    // .utime == -1, in which case no command is sent to the robot.
+    msg_iiwa_command = lcmt_iiwa_command();
+    msg_iiwa_command.utime = -1;
+    return;
+  }
+
+  // Check command for error.
+  if (!state_machine_.CommandHasError(s, c)) {
+    const int num_joints = msg_iiwa_status.num_joints;
+    msg_iiwa_command.num_joints = num_joints;
+    msg_iiwa_command.num_torques = num_joints;
+    msg_iiwa_command.utime = msg_iiwa_status.utime;
+    msg_iiwa_command.joint_position.resize(num_joints);
+    msg_iiwa_command.joint_torque.resize(num_joints);
+    for (int i = 0; i < num_joints; i++) {
+      msg_iiwa_command.joint_position[i] = c.q_cmd[i];
+      msg_iiwa_command.joint_torque[i] = c.tau_cmd[i];
+    }
   }
 }
 

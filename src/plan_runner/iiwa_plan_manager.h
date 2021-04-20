@@ -16,7 +16,7 @@ class IiwaPlanManager {
   void Run();
 
  private:
-  const double control_period_;
+  const double control_period_seconds_;
   mutable std::mutex mutex_state_machine_;
   std::unique_ptr<PlanManagerStateMachine> state_machine_;
   std::unordered_map<std::string, std::thread> threads_;

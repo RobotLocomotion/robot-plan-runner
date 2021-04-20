@@ -1,26 +1,27 @@
-#include "state_idle.h"
 #include "state_running.h"
 #include "state_error.h"
+#include "state_idle.h"
 
 using std::cout;
 using std::endl;
 
-PlanManagerStateBase* StateRunning::instance_ = nullptr;
-PlanManagerStateBase* StateRunning::Instance() {
+PlanManagerStateBase *StateRunning::instance_ = nullptr;
+PlanManagerStateBase *StateRunning::Instance() {
   if (!instance_) {
     instance_ = new StateRunning();
   }
   return instance_;
 }
 
-const PlanBase * StateRunning::GetCurrentPlan(PlanManagerStateMachine *state_machine,
-                                              double t_now) const {
-  auto& plans = state_machine->get_mutable_plans_queue();
+const PlanBase *
+StateRunning::GetCurrentPlan(PlanManagerStateMachine *state_machine,
+                             double t_now) const {
+  auto &plans = state_machine->get_mutable_plans_queue();
   DRAKE_THROW_UNLESS(!plans.empty());
   const double *t_start = state_machine->get_current_plan_start_time();
   if (t_start == nullptr) {
-    // current_plan_start_time_seconds_ is nullptr, meaning that there is no active
-    // plan.
+    // current_plan_start_time_seconds_ is nullptr, meaning that there is no
+    // active plan.
     state_machine->set_current_plan_start_time(t_now);
   } else {
     const double t_elapsed_seconds = state_machine->GetCurrentPlanUpTime(t_now);
@@ -38,16 +39,17 @@ const PlanBase * StateRunning::GetCurrentPlan(PlanManagerStateMachine *state_mac
   return plans.front().get();
 }
 
-double StateRunning::GetCurrentPlanUpTime(const PlanManagerStateMachine *state_machine,
-                                          double t_now) const {
-  const double* t_start = state_machine->get_current_plan_start_time();
+double
+StateRunning::GetCurrentPlanUpTime(const PlanManagerStateMachine *state_machine,
+                                   double t_now) const {
+  const double *t_start = state_machine->get_current_plan_start_time();
   DRAKE_THROW_UNLESS(t_start != nullptr);
   return t_now - *t_start;
 }
 
 void StateRunning::QueueNewPlan(PlanManagerStateMachine *state_machine,
                                 std::unique_ptr<PlanBase> plan) {
-  //TODO: what is the desired behavior when receiving a new plan while a plan
+  // TODO: what is the desired behavior when receiving a new plan while a plan
   // is still being executed? Discard or queue?
   // Discard is probably the better option? The client should be blocked
   // while a plan is executing. A vector of plans can be sent over LCM to
@@ -58,8 +60,7 @@ void StateRunning::QueueNewPlan(PlanManagerStateMachine *state_machine,
 }
 
 // return true: has error; false: has no error.
-bool StateRunning::CommandHasError(const State &state,
-                                   const Command &cmd,
+bool StateRunning::CommandHasError(const State &state, const Command &cmd,
                                    PlanManagerStateMachine *state_machine) {
   bool is_nan =
       cmd.q_cmd.array().isNaN().sum() or cmd.tau_cmd.array().isNaN().sum();
@@ -82,5 +83,3 @@ std::string StateRunning::PrintCurrentState(
   cout << msg << endl;
   return std::move(msg);
 }
-
-

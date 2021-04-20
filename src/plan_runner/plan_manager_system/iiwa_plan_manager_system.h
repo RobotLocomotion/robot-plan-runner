@@ -32,8 +32,12 @@ private:
       drake::systems::State<double>* state) const;
 
   const double control_period_seconds_{};
-  mutable PlanManagerStateMachine state_machine_;
   IiwaPlanFactory plan_factory_;
+  mutable PlanManagerStateMachine state_machine_;
+  // signature of the last robot plan.
+  // TODO: use the hash of the plan (concatenated q_knots as strings?) as the
+  //  signature.
+  mutable long last_robot_plan_utime_{-1};
 
   // input port and state indices.
   drake::systems::AbstractStateIndex abstract_state_idx_;

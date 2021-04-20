@@ -11,7 +11,7 @@ using std::cout;
 using std::endl;
 
 IiwaPlanManager::IiwaPlanManager(double control_period)
-    : control_period_(control_period) {
+    : control_period_seconds_(control_period) {
   state_machine_ = std::make_unique<PlanManagerStateMachine>();
 }
 
@@ -130,8 +130,8 @@ void IiwaPlanManager::HandleIiwaStatus(
                                iiwa_status_msg_.num_joints));
   Command c;
   if (plan) {
-    plan->Step(s, control_period_, state_machine_->GetCurrentPlanUpTime(t_now),
-               &c);
+    plan->Step(s, control_period_seconds_,
+               state_machine_->GetCurrentPlanUpTime(t_now), &c);
   } else {
     // TODO: no command is sent if there is no plan. Make sure that this is
     //  the desired behavior.
