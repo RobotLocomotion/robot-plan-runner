@@ -10,18 +10,13 @@ using drake::systems::BasicVector;
 using Eigen::VectorXd;
 
 IiwaPlanManagerSystem::IiwaPlanManagerSystem(double control_period_seconds)
-    : control_period_seconds_(control_period_seconds),
-      plant_(plan_factory_.get_plant()) {
+    : control_period_seconds_(control_period_seconds) {
   // Initialize state machine.
   state_machine_ = std::make_unique<PlanManagerStateMachine>(0);
 
   set_name("IiwaPlanManagerSystem");
-  // Abstract state and update events.
-  // At least one state is needed for declaring an discrete update event, but
-  //  only printing is done in that event, therefore this state is not updated.
-  DeclareDiscreteState(1);
-  DeclarePeriodicDiscreteUpdateEvent(
-      1.0, 0, &IiwaPlanManagerSystem::PrintCurrentState);
+  DeclarePeriodicPublishEvent(1.0, 0,
+                              &IiwaPlanManagerSystem::PrintCurrentState);
 
   // Input ports.
   input_port_iiwa_status_idx_ =
@@ -40,12 +35,13 @@ IiwaPlanManagerSystem::IiwaPlanManagerSystem(double control_period_seconds)
   //  abstract-valued ZeroOrderHold is needed to enforce the update rate.
   output_port_iiwa_command_idx_ =
       DeclareAbstractOutputPort("lcmt_iiwa_command",
-                            &IiwaPlanManagerSystem::CalcIiwaCommand).get_index();
+                                &IiwaPlanManagerSystem::CalcIiwaCommand)
+          .get_index();
 }
 
 void IiwaPlanManagerSystem::CalcIiwaCommand(
     const drake::systems::Context<double> &context,
-    drake::lcmt_iiwa_command* cmd) const {
+    drake::lcmt_iiwa_command *cmd) const {
   const auto &msg_iiwa_status =
       get_iiwa_status_input_port().Eval<lcmt_iiwa_status>(context);
   const auto &msg_robot_plan =
@@ -119,7 +115,6 @@ void IiwaPlanManagerSystem::CalcIiwaCommand(
 }
 
 void IiwaPlanManagerSystem::PrintCurrentState(
-    const drake::systems::Context<double> &context,
-    drake::systems::DiscreteValues<double>*) const {
+    const drake::systems::Context<double> &context) const {
   state_machine_->PrintCurrentState(context.get_time());
 }

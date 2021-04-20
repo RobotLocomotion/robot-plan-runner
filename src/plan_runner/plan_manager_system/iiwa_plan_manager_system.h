@@ -30,8 +30,7 @@ private:
   void CalcIiwaCommand(const drake::systems::Context<double>& context,
                        drake::lcmt_iiwa_command* cmd) const;
 
-  void PrintCurrentState(const drake::systems::Context<double>& context,
-      drake::systems::DiscreteValues<double>* state) const;
+  void PrintCurrentState(const drake::systems::Context<double> &context) const;
 
   const double control_period_seconds_{};
   IiwaPlanFactory plan_factory_;
@@ -45,7 +44,4 @@ private:
   drake::systems::InputPortIndex input_port_iiwa_status_idx_;
   drake::systems::InputPortIndex input_port_robot_plan_idx_;
   drake::systems::OutputPortIndex output_port_iiwa_command_idx_;
-
-  // a constant reference to the MBP in plan_factory_.
-  const drake::multibody::MultibodyPlant<double> &plant_;
 };
