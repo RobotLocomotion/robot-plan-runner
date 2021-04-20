@@ -67,4 +67,4 @@ lc = lcm.LCM()
 lc.publish("ROBOT_PLAN", calc_plan_msg(t_knots, q_knots1).encode())
 
 #%% send msg 2 via lcm.
-lc.publish("ROBOT_PLAN", calc_plan_msg(t_knots, q_knots1).encode())
+lc.publish("ROBOT_PLAN", calc_plan_msg(t_knots, q_knots2).encode())
