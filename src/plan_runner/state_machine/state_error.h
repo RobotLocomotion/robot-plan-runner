@@ -13,8 +13,8 @@ public:
   void QueueNewPlan(PlanManagerStateMachine *state_machine,
                     std::unique_ptr<PlanBase> plan) override;
 
-  std::string PrintCurrentState(
-      const PlanManagerStateMachine *state_machine) const override;
+  void PrintCurrentState(const PlanManagerStateMachine *state_machine,
+                         double t_now_seconds) const override;
 
   [[nodiscard]] PlanManagerStateTypes get_state_type() const override {
     return PlanManagerStateTypes::kStateError;

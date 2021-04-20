@@ -11,14 +11,16 @@ PlanManagerStateBase *StateError::Instance() {
   return instance_;
 }
 
-std::string StateError::PrintCurrentState(
-    const PlanManagerStateMachine *state_machine) const {
-  std::string msg("[ERROR]: ");
+void StateError::PrintCurrentState(const PlanManagerStateMachine *state_machine,
+                                   double t_now_seconds) const {
+  std::string msg("t = ");
+  msg +=
+      std::to_string(state_machine->get_state_machine_up_time(t_now_seconds));
+  msg += (". [ERROR]: ");
   msg += "Number of plans: ";
   msg += std::to_string(state_machine->num_plans());
   msg += ".";
   cout << msg << endl;
-  return std::move(msg);
 }
 
 void StateError::QueueNewPlan(PlanManagerStateMachine *state_machine,

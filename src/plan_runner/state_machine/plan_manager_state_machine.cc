@@ -3,14 +3,16 @@
 
 using std::string;
 
-PlanManagerStateMachine::PlanManagerStateMachine() {
+PlanManagerStateMachine::PlanManagerStateMachine(
+    double state_machine_start_time_seconds
+    )
+    : state_machine_start_time_seconds_(state_machine_start_time_seconds) {
   // Initialize to state INIT.
   state_ = StateInit::Instance();
 }
 
 double PlanManagerStateBase::GetCurrentPlanUpTime(
-    const PlanManagerStateMachine *state_machine,
-    double t_now) const {
+    const PlanManagerStateMachine *state_machine, double t_now) const {
   string error_msg = "GetCurrentPlanUpTime should not be called in state ";
   error_msg += get_state_name();
   error_msg += ".";

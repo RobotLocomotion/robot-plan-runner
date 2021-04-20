@@ -12,7 +12,11 @@ using std::endl;
 
 IiwaPlanManager::IiwaPlanManager(double control_period)
     : control_period_seconds_(control_period) {
-  state_machine_ = std::make_unique<PlanManagerStateMachine>();
+  double t_now_seconds =
+      std::chrono::duration_cast<DoubleSeconds>(
+          std::chrono::high_resolution_clock::now().time_since_epoch())
+          .count();
+  state_machine_ = std::make_unique<PlanManagerStateMachine>(t_now_seconds);
 }
 
 IiwaPlanManager::~IiwaPlanManager() {
@@ -49,8 +53,12 @@ void IiwaPlanManager::CalcCommandFromStatus() {
 void IiwaPlanManager::PrintStateMachineStatus() const {
   using namespace std::chrono_literals;
   while (true) {
-    std::this_thread::sleep_for(1s);
-    { state_machine_->PrintCurrentState(); }
+    std::this_thread::sleep_for(1000ms);
+    double t_now_seconds =
+        std::chrono::duration_cast<DoubleSeconds>(
+            std::chrono::high_resolution_clock::now().time_since_epoch())
+            .count();
+    state_machine_->PrintCurrentState(t_now_seconds);
   }
 }
 

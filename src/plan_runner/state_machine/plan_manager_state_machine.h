@@ -19,7 +19,7 @@ class PlanManagerStateBase;
 
 class PlanManagerStateMachine {
 public:
-  PlanManagerStateMachine();
+  PlanManagerStateMachine(double state_machine_start_time_seconds);
   // State-dependent methods.
   // TODO: separate the logic that schedules plans into another function.
   [[nodiscard]] const PlanBase *GetCurrentPlan(const TimePoint &t_now);
@@ -31,7 +31,7 @@ public:
   [[nodiscard]] double GetCurrentPlanUpTime(double t_now_seconds) const;
 
   // Print information about the currently active state.
-  std::string PrintCurrentState() const;
+  void PrintCurrentState(double t_now_seconds) const;
 
   // Tries to add a plan to the queue of plans to be executed. Note that the
   // maximum size of this queue is 1 in the current implementation.
@@ -56,6 +56,7 @@ public:
   // Other methods.
   [[nodiscard]] size_t num_plans() const { return plans_.size(); }
 
+
   std::queue<std::unique_ptr<PlanBase>> &get_mutable_plans_queue() {
     return plans_;
   };
@@ -65,9 +66,11 @@ public:
     return plans_;
   };
 
+  double get_state_machine_up_time(double t_now_seconds) const;
+
   // TODO: "time" methods should probably be private. Access by states can be
   //  enabled by forwarding in PlanManagerStateBase.
-  void set_current_plan_start_time(double t_seconds);
+  void set_current_plan_start_time(double t_now_seconds);
 
   void reset_current_plan_start_time() {
     current_plan_start_time_seconds_.reset();
@@ -87,6 +90,8 @@ private:
   // seconds as a double.
   // In Drake systems, this stores context.get_time().
   std::unique_ptr<double> current_plan_start_time_seconds_{nullptr};
+
+  const double state_machine_start_time_seconds_;
 };
 
 class PlanManagerStateBase {
@@ -109,8 +114,9 @@ public:
   // Pure virtual functions.
   [[nodiscard]] virtual PlanManagerStateTypes get_state_type() const = 0;
 
-  virtual std::string
-  PrintCurrentState(const PlanManagerStateMachine *state_machine) const = 0;
+  virtual void
+  PrintCurrentState(const PlanManagerStateMachine *state_machine,
+                    double t_now_seconds) const = 0;
 
   virtual const PlanBase *GetCurrentPlan(PlanManagerStateMachine *state_machine,
                                          double t_now_seconds) const = 0;
@@ -176,17 +182,22 @@ PlanManagerStateMachine::GetCurrentPlan(const TimePoint &t_now) {
   return state_->GetCurrentPlan(this, t_now_double);
 }
 
+inline double PlanManagerStateMachine::get_state_machine_up_time(double
+t_now_seconds) const {
+  return t_now_seconds - state_machine_start_time_seconds_;
+}
+
 inline const PlanBase *PlanManagerStateMachine::GetCurrentPlan(double t_now) {
   return state_->GetCurrentPlan(this, t_now);
 }
 
-inline std::string PlanManagerStateMachine::PrintCurrentState() const {
-  return state_->PrintCurrentState(this);
+inline void PlanManagerStateMachine::PrintCurrentState(double t_now_seconds) const {
+  state_->PrintCurrentState(this, t_now_seconds);
 }
 
 inline void
-PlanManagerStateMachine::set_current_plan_start_time(double t_seconds) {
-  current_plan_start_time_seconds_ = std::make_unique<double>(t_seconds);
+PlanManagerStateMachine::set_current_plan_start_time(double t_now_seconds) {
+  current_plan_start_time_seconds_ = std::make_unique<double>(t_now_seconds);
 }
 
 inline bool PlanManagerStateMachine::CommandHasError(const State &state,

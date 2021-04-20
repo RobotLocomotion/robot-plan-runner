@@ -12,6 +12,9 @@ using Eigen::VectorXd;
 IiwaPlanManagerSystem::IiwaPlanManagerSystem(double control_period_seconds)
     : control_period_seconds_(control_period_seconds),
       plant_(plan_factory_.get_plant()) {
+  // Initialize state machine.
+  state_machine_ = std::make_unique<PlanManagerStateMachine>(0);
+
   set_name("IiwaPlanManagerSystem");
   // Abstract state and update events.
   // TODO: compute output in the output port callback function, as publish
@@ -52,7 +55,7 @@ void IiwaPlanManagerSystem::UpdateIiwaCommand(
       msg_robot_plan.utime != last_robot_plan_utime_) {
     // has new message.
     auto plan = plan_factory_.MakePlan(msg_robot_plan);
-    state_machine_.QueueNewPlan(std::move(plan));
+    state_machine_->QueueNewPlan(std::move(plan));
     last_robot_plan_utime_ = msg_robot_plan.utime;
   }
 
@@ -60,12 +63,12 @@ void IiwaPlanManagerSystem::UpdateIiwaCommand(
   if (msg_iiwa_status.num_joints == 0) {
     return;
   } else {
-    state_machine_.receive_new_status_msg();
+    state_machine_->receive_new_status_msg();
   }
 
   // Compute iiwa_command.
   const double t_now = context.get_time();
-  auto plan = state_machine_.GetCurrentPlan(t_now);
+  auto plan = state_machine_->GetCurrentPlan(t_now);
 
   State s(
       Eigen::Map<const VectorXd>(msg_iiwa_status.joint_position_measured.data(),
@@ -79,7 +82,7 @@ void IiwaPlanManagerSystem::UpdateIiwaCommand(
 
   if (plan) {
     plan->Step(s, control_period_seconds_,
-               state_machine_.GetCurrentPlanUpTime(t_now), &c);
+               state_machine_->GetCurrentPlanUpTime(t_now), &c);
   } else {
     // send an empty iiwa command message with utime = -1. drake-iiwa-driver
     // throws if msg_iiwa_command.num_joints != 7, unless msg_iiwa_command
@@ -90,7 +93,7 @@ void IiwaPlanManagerSystem::UpdateIiwaCommand(
   }
 
   // Check command for error.
-  if (!state_machine_.CommandHasError(s, c)) {
+  if (!state_machine_->CommandHasError(s, c)) {
     const int num_joints = msg_iiwa_status.num_joints;
     msg_iiwa_command.num_joints = num_joints;
     msg_iiwa_command.num_torques = num_joints;
@@ -107,8 +110,7 @@ void IiwaPlanManagerSystem::UpdateIiwaCommand(
 void IiwaPlanManagerSystem::PrintCurrentState(
     const drake::systems::Context<double> &context,
     drake::systems::State<double> *) const {
-  std::cout << "t = " << context.get_time() << ". ";
-  state_machine_.PrintCurrentState();
+  state_machine_->PrintCurrentState(context.get_time());
 }
 
 void IiwaPlanManagerSystem::CopyStateOut(

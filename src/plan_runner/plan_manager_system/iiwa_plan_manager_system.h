@@ -33,7 +33,7 @@ private:
 
   const double control_period_seconds_{};
   IiwaPlanFactory plan_factory_;
-  mutable PlanManagerStateMachine state_machine_;
+  std::unique_ptr<PlanManagerStateMachine> state_machine_;
   // signature of the last robot plan.
   // TODO: use the hash of the plan (concatenated q_knots as strings?) as the
   //  signature.
