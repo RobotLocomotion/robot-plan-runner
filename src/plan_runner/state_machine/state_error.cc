@@ -11,6 +11,14 @@ PlanManagerStateBase *StateError::Instance() {
   return instance_;
 }
 
+bool StateError::CommandHasError(const State &state, const Command &cmd,
+                     PlanManagerStateMachine *state_machine) {
+  std::string error_msg = "CommandHasError should not be called in state ";
+  error_msg += get_state_name();
+  error_msg += ".";
+  throw std::runtime_error(error_msg);
+}
+
 void StateError::PrintCurrentState(const PlanManagerStateMachine *state_machine,
                                    double t_now_seconds) const {
   std::string msg("t = ");

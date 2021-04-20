@@ -13,7 +13,8 @@ PlanManagerStateBase* StateIdle::Instance() {
 }
 
 const PlanBase * StateIdle::GetCurrentPlan(PlanManagerStateMachine *state_machine,
-                                           double t_now) const {
+                                           double t_now,
+                                           const drake::lcmt_iiwa_status &msg_iiwa_status) const {
   DRAKE_THROW_UNLESS(state_machine->num_plans() == 0);
   return nullptr;
 }

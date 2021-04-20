@@ -12,14 +12,17 @@ PlanManagerStateBase *StateInit::Instance() {
   return instance_;
 }
 
-const PlanBase *StateInit::GetCurrentPlan(PlanManagerStateMachine *state_machine,
-                                          double t_now) const {
+const PlanBase *StateInit::GetCurrentPlan(
+    PlanManagerStateMachine *state_machine, double t_now,
+    const drake::lcmt_iiwa_status &msg_iiwa_status) const {
   DRAKE_THROW_UNLESS(state_machine->num_plans() == 0);
   return nullptr;
 }
 
-void StateInit::receive_new_status_msg(
-    PlanManagerStateMachine *state_machine) const {
+void StateInit::ReceiveNewStatusMsg(
+    PlanManagerStateMachine *state_machine,
+    const drake::lcmt_iiwa_status &msg_iiwa_status) const {
+  state_machine->SetIiwaPositionCommandIdle(msg_iiwa_status);
   ChangeState(state_machine, StateIdle::Instance());
 }
 
@@ -28,6 +31,14 @@ void StateInit::QueueNewPlan(PlanManagerStateMachine *state_machine,
   std::cout << "[INIT]: no robot status message received yet. "
                "Received plan is discarded."
             << std::endl;
+}
+
+bool StateInit::CommandHasError(const State &state, const Command &cmd,
+                     PlanManagerStateMachine *state_machine) {
+  std::string error_msg = "CommandHasError should not be called in state ";
+  error_msg += get_state_name();
+  error_msg += ".";
+  throw std::runtime_error(error_msg);
 }
 
 void StateInit::PrintCurrentState(const PlanManagerStateMachine *state_machine,

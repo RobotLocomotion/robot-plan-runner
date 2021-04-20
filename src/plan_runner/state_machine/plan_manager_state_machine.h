@@ -3,8 +3,10 @@
 #include <memory>
 #include <queue>
 
-#include "../plans/plan_base.h"
 #include "drake/multibody/plant/multibody_plant.h"
+#include "drake_lcmtypes/drake/lcmt_iiwa_status.hpp"
+
+#include "../plans/plan_base.h"
 
 // TODO: this is not used right now.
 enum PlanManagerStateTypes {
@@ -19,15 +21,18 @@ class PlanManagerStateBase;
 
 class PlanManagerStateMachine {
 public:
-  PlanManagerStateMachine(double state_machine_start_time_seconds);
+  explicit PlanManagerStateMachine(double state_machine_start_time_seconds);
   // State-dependent methods.
   // TODO: separate the logic that schedules plans into another function.
-  [[nodiscard]] const PlanBase *GetCurrentPlan(const TimePoint &t_now);
-  [[nodiscard]] const PlanBase *GetCurrentPlan(double t_now_seconds);
+  [[nodiscard]] const PlanBase *
+  GetCurrentPlan(const TimePoint &t_now,
+                 const drake::lcmt_iiwa_status &msg_iiwa_status);
+  [[nodiscard]] const PlanBase *
+  GetCurrentPlan(double t_now_seconds,
+                 const drake::lcmt_iiwa_status &msg_iiwa_status);
 
   // Returns in seconds how long the current plan has been active.
-  [[nodiscard]] double
-  GetCurrentPlanUpTime(const TimePoint &t_now) const;
+  [[nodiscard]] double GetCurrentPlanUpTime(const TimePoint &t_now) const;
   [[nodiscard]] double GetCurrentPlanUpTime(double t_now_seconds) const;
 
   // Print information about the currently active state.
@@ -49,13 +54,12 @@ public:
   // Called when a new IIWA_STATUS message is received. If the current state is
   //  INIT, the state is changed to IDLE. If the current state is IDLE,
   //  RUNNING or ERROR, this function does nothing.
-  void receive_new_status_msg();
+  void ReceiveNewStatusMsg(const drake::lcmt_iiwa_status &msg_iiwa_status);
 
   [[nodiscard]] PlanManagerStateTypes get_state_type() const;
 
   // Other methods.
   [[nodiscard]] size_t num_plans() const { return plans_.size(); }
-
 
   std::queue<std::unique_ptr<PlanBase>> &get_mutable_plans_queue() {
     return plans_;
@@ -66,7 +70,16 @@ public:
     return plans_;
   };
 
-  double get_state_machine_up_time(double t_now_seconds) const;
+  // Stores lcmt_iiwa_status.joint_position_measured in
+  //  iiwa_position_command_idle_.
+  void
+  SetIiwaPositionCommandIdle(const drake::lcmt_iiwa_status &msg_iiwa_status);
+
+  [[nodiscard]] const Eigen::VectorXd &get_iiwa_position_command_idle() const {
+    return iiwa_position_command_idle_;
+  };
+
+  [[nodiscard]] double get_state_machine_up_time(double t_now_seconds) const;
 
   // TODO: "time" methods should probably be private. Access by states can be
   //  enabled by forwarding in PlanManagerStateBase.
@@ -92,6 +105,9 @@ private:
   std::unique_ptr<double> current_plan_start_time_seconds_{nullptr};
 
   const double state_machine_start_time_seconds_;
+
+  // The iiwa command to send in state IDLE.
+  Eigen::VectorXd iiwa_position_command_idle_;
 };
 
 class PlanManagerStateBase {
@@ -103,9 +119,6 @@ public:
 
   [[nodiscard]] virtual bool has_received_status_msg() const;
 
-  virtual void
-  receive_new_status_msg(PlanManagerStateMachine *state_machine) const;
-
   virtual void QueueNewPlan(PlanManagerStateMachine *state_machine,
                             std::unique_ptr<PlanBase> plan);
 
@@ -115,11 +128,14 @@ public:
   [[nodiscard]] virtual PlanManagerStateTypes get_state_type() const = 0;
 
   virtual void
-  PrintCurrentState(const PlanManagerStateMachine *state_machine,
-                    double t_now_seconds) const = 0;
+  ReceiveNewStatusMsg(PlanManagerStateMachine *state_machine,
+                      const drake::lcmt_iiwa_status &msg_iiwa_status) const = 0;
+  virtual void PrintCurrentState(const PlanManagerStateMachine *state_machine,
+                                 double t_now_seconds) const = 0;
 
-  virtual const PlanBase *GetCurrentPlan(PlanManagerStateMachine *state_machine,
-                                         double t_now_seconds) const = 0;
+  virtual const PlanBase *
+  GetCurrentPlan(PlanManagerStateMachine *state_machine, double t_now_seconds,
+                 const drake::lcmt_iiwa_status &msg_iiwa_status) const = 0;
 
   // Other functions.
   [[nodiscard]] const std::string &get_state_name() const {
@@ -143,8 +159,9 @@ inline bool PlanManagerStateMachine::has_received_status_msg() const {
   return state_->has_received_status_msg();
 }
 
-inline void PlanManagerStateMachine::receive_new_status_msg() {
-  state_->receive_new_status_msg(this);
+inline void PlanManagerStateMachine::ReceiveNewStatusMsg(
+    const drake::lcmt_iiwa_status &msg_iiwa_status) {
+  state_->ReceiveNewStatusMsg(this, msg_iiwa_status);
 }
 
 inline PlanManagerStateTypes PlanManagerStateMachine::get_state_type() const {
@@ -174,24 +191,26 @@ PlanManagerStateMachine::GetCurrentPlanUpTime(double t_now) const {
   return state_->GetCurrentPlanUpTime(this, t_now);
 }
 
-inline const PlanBase *
-PlanManagerStateMachine::GetCurrentPlan(const TimePoint &t_now) {
+inline const PlanBase *PlanManagerStateMachine::GetCurrentPlan(
+    const TimePoint &t_now, const drake::lcmt_iiwa_status &msg_iiwa_status) {
   double t_now_double =
       std::chrono::duration_cast<DoubleSeconds>(t_now.time_since_epoch())
           .count();
-  return state_->GetCurrentPlan(this, t_now_double);
+  return state_->GetCurrentPlan(this, t_now_double, msg_iiwa_status);
 }
 
-inline double PlanManagerStateMachine::get_state_machine_up_time(double
-t_now_seconds) const {
+inline double
+PlanManagerStateMachine::get_state_machine_up_time(double t_now_seconds) const {
   return t_now_seconds - state_machine_start_time_seconds_;
 }
 
-inline const PlanBase *PlanManagerStateMachine::GetCurrentPlan(double t_now) {
-  return state_->GetCurrentPlan(this, t_now);
+inline const PlanBase *PlanManagerStateMachine::GetCurrentPlan(
+    double t_now_seconds, const drake::lcmt_iiwa_status &msg_iiwa_status) {
+  return state_->GetCurrentPlan(this, t_now_seconds, msg_iiwa_status);
 }
 
-inline void PlanManagerStateMachine::PrintCurrentState(double t_now_seconds) const {
+inline void
+PlanManagerStateMachine::PrintCurrentState(double t_now_seconds) const {
   state_->PrintCurrentState(this, t_now_seconds);
 }
 

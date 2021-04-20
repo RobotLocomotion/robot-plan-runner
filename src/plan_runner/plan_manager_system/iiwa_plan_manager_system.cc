@@ -63,12 +63,12 @@ void IiwaPlanManagerSystem::UpdateIiwaCommand(
   if (msg_iiwa_status.num_joints == 0) {
     return;
   } else {
-    state_machine_->receive_new_status_msg();
+    state_machine_->ReceiveNewStatusMsg(msg_iiwa_status);
   }
 
   // Compute iiwa_command.
   const double t_now = context.get_time();
-  auto plan = state_machine_->GetCurrentPlan(t_now);
+  auto plan = state_machine_->GetCurrentPlan(t_now, msg_iiwa_status);
 
   State s(
       Eigen::Map<const VectorXd>(msg_iiwa_status.joint_position_measured.data(),
@@ -83,10 +83,20 @@ void IiwaPlanManagerSystem::UpdateIiwaCommand(
   if (plan) {
     plan->Step(s, control_period_seconds_,
                state_machine_->GetCurrentPlanUpTime(t_now), &c);
+  } else if (state_machine_->get_state_type() ==
+             PlanManagerStateTypes::kStateIdle) {
+    c.q_cmd = state_machine_->get_iiwa_position_command_idle();
+    c.tau_cmd = Eigen::VectorXd::Zero(msg_iiwa_status.num_joints);
   } else {
-    // send an empty iiwa command message with utime = -1. drake-iiwa-driver
-    // throws if msg_iiwa_command.num_joints != 7, unless msg_iiwa_command
-    // .utime == -1, in which case no command is sent to the robot.
+    // In state INIT or ERROR.
+    // Send an empty iiwa command message with utime = -1.
+    // Behavior with mock_station_simulation:
+    //  throws with error message:
+    //   IiwaCommandReceiver expected num_joints = 7, but received 0.
+    // TODO: confirm the behavior of drake-iiwa-driver (real robot).
+    //  What I think will happen:
+    //  throws if msg_iiwa_command.num_joints != 7, unless msg_iiwa_command
+    //  .utime == -1, in which case no command is sent to the robot.
     msg_iiwa_command = lcmt_iiwa_command();
     msg_iiwa_command.utime = -1;
     return;

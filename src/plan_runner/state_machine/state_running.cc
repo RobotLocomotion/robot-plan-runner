@@ -13,9 +13,9 @@ PlanManagerStateBase *StateRunning::Instance() {
   return instance_;
 }
 
-const PlanBase *
-StateRunning::GetCurrentPlan(PlanManagerStateMachine *state_machine,
-                             double t_now) const {
+const PlanBase *StateRunning::GetCurrentPlan(
+    PlanManagerStateMachine *state_machine, double t_now,
+    const drake::lcmt_iiwa_status &msg_iiwa_status) const {
   auto &plans = state_machine->get_mutable_plans_queue();
   DRAKE_THROW_UNLESS(!plans.empty());
   const double *t_start = state_machine->get_current_plan_start_time();
@@ -33,6 +33,7 @@ StateRunning::GetCurrentPlan(PlanManagerStateMachine *state_machine,
   }
   if (plans.empty()) {
     state_machine->reset_current_plan_start_time();
+    state_machine->SetIiwaPositionCommandIdle(msg_iiwa_status);
     ChangeState(state_machine, StateIdle::Instance());
     return nullptr;
   }
@@ -57,21 +58,6 @@ void StateRunning::QueueNewPlan(PlanManagerStateMachine *state_machine,
   std::cout << "[Running]: another plan is running. "
                "Received plan is discarded."
             << std::endl;
-}
-
-// return true: has error; false: has no error.
-bool StateRunning::CommandHasError(const State &state, const Command &cmd,
-                                   PlanManagerStateMachine *state_machine) {
-  bool is_nan =
-      cmd.q_cmd.array().isNaN().sum() or cmd.tau_cmd.array().isNaN().sum();
-
-  bool is_too_far_away = (state.q - cmd.q_cmd).norm() > 0.05;
-
-  bool is_error = is_nan or is_too_far_away;
-  if (is_error) {
-    ChangeState(state_machine, StateError::Instance());
-  }
-  return is_error;
 }
 
 void StateRunning::PrintCurrentState(
