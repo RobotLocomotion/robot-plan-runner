@@ -22,14 +22,11 @@ public:
   }
 
 private:
-  void CopyStateOut(const drake::systems::Context<double> &context,
+  void CalcIiwaCommand(const drake::systems::Context<double>& context,
                        drake::lcmt_iiwa_command* cmd) const;
 
-  void UpdateIiwaCommand(const drake::systems::Context<double>& context,
-                         drake::systems::State<double>* state) const;
-
   void PrintCurrentState(const drake::systems::Context<double>& context,
-      drake::systems::State<double>* state) const;
+      drake::systems::DiscreteValues<double>* state) const;
 
   const double control_period_seconds_{};
   IiwaPlanFactory plan_factory_;
@@ -40,7 +37,6 @@ private:
   mutable long last_robot_plan_utime_{-1};
 
   // input port and state indices.
-  drake::systems::AbstractStateIndex abstract_state_idx_;
   drake::systems::InputPortIndex input_port_iiwa_status_idx_;
   drake::systems::InputPortIndex input_port_robot_plan_idx_;
 

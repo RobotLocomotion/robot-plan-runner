@@ -17,13 +17,10 @@ IiwaPlanManagerSystem::IiwaPlanManagerSystem(double control_period_seconds)
 
   set_name("IiwaPlanManagerSystem");
   // Abstract state and update events.
-  // TODO: compute output in the output port callback function, as publish
-  //  rate is driven by lcm publisher system.
-  abstract_state_idx_ =
-      DeclareAbstractState(*drake::AbstractValue::Make(lcmt_iiwa_command()));
-  DeclarePeriodicUnrestrictedUpdateEvent(
-      control_period_seconds_, 0, &IiwaPlanManagerSystem::UpdateIiwaCommand);
-  DeclarePeriodicUnrestrictedUpdateEvent(
+  // At least one state is needed for declaring an discrete update event, but
+  //  only printing is done in that event, therefore this state is not updated.
+  DeclareDiscreteState(1);
+  DeclarePeriodicDiscreteUpdateEvent(
       1.0, 0, &IiwaPlanManagerSystem::PrintCurrentState);
 
   // Input ports.
@@ -36,20 +33,23 @@ IiwaPlanManagerSystem::IiwaPlanManagerSystem(double control_period_seconds)
                                *drake::AbstractValue::Make(lcmt_robot_plan()))
           .get_index();
 
-  // Output ports.
+  // Output port.
+  // The rate at which this output port is evaluated is driven by the
+  //  downstream system. In lcm interface, the update rate is defined in the
+  //  downstream LcmPublisherSystem. In simulation without lcm, an
+  //  abstract-valued ZeroOrderHold is needed to enforce the update rate.
   DeclareAbstractOutputPort("lcmt_iiwa_command",
-                            &IiwaPlanManagerSystem::CopyStateOut);
+                            &IiwaPlanManagerSystem::CalcIiwaCommand);
 }
 
-void IiwaPlanManagerSystem::UpdateIiwaCommand(
+void IiwaPlanManagerSystem::CalcIiwaCommand(
     const drake::systems::Context<double> &context,
-    drake::systems::State<double> *state) const {
+    drake::lcmt_iiwa_command* cmd) const {
   const auto &msg_iiwa_status =
       get_iiwa_status_input_port().Eval<lcmt_iiwa_status>(context);
   const auto &msg_robot_plan =
       get_robot_plan_input_port().Eval<lcmt_robot_plan>(context);
-  auto &msg_iiwa_command =
-      state->get_mutable_abstract_state<lcmt_iiwa_command>(abstract_state_idx_);
+  auto &msg_iiwa_command = *cmd;
   // Handle new robot plan messages.
   if (msg_robot_plan.num_states > 0 and
       msg_robot_plan.utime != last_robot_plan_utime_) {
@@ -119,12 +119,6 @@ void IiwaPlanManagerSystem::UpdateIiwaCommand(
 
 void IiwaPlanManagerSystem::PrintCurrentState(
     const drake::systems::Context<double> &context,
-    drake::systems::State<double> *) const {
+    drake::systems::DiscreteValues<double>*) const {
   state_machine_->PrintCurrentState(context.get_time());
-}
-
-void IiwaPlanManagerSystem::CopyStateOut(
-    const drake::systems::Context<double> &context,
-    lcmt_iiwa_command *cmd) const {
-  *cmd = context.get_abstract_state<lcmt_iiwa_command>(abstract_state_idx_);
 }
