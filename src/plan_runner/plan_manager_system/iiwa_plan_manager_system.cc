@@ -38,8 +38,9 @@ IiwaPlanManagerSystem::IiwaPlanManagerSystem(double control_period_seconds)
   //  downstream system. In lcm interface, the update rate is defined in the
   //  downstream LcmPublisherSystem. In simulation without lcm, an
   //  abstract-valued ZeroOrderHold is needed to enforce the update rate.
-  DeclareAbstractOutputPort("lcmt_iiwa_command",
-                            &IiwaPlanManagerSystem::CalcIiwaCommand);
+  output_port_iiwa_command_idx_ =
+      DeclareAbstractOutputPort("lcmt_iiwa_command",
+                            &IiwaPlanManagerSystem::CalcIiwaCommand).get_index();
 }
 
 void IiwaPlanManagerSystem::CalcIiwaCommand(

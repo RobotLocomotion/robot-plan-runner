@@ -21,6 +21,11 @@ public:
     return get_input_port(input_port_robot_plan_idx_);
   }
 
+  const drake::systems::OutputPort<double>& get_iiwa_command_output_port()
+  const {
+    return get_output_port(output_port_iiwa_command_idx_);
+  }
+
 private:
   void CalcIiwaCommand(const drake::systems::Context<double>& context,
                        drake::lcmt_iiwa_command* cmd) const;
@@ -39,6 +44,7 @@ private:
   // input port and state indices.
   drake::systems::InputPortIndex input_port_iiwa_status_idx_;
   drake::systems::InputPortIndex input_port_robot_plan_idx_;
+  drake::systems::OutputPortIndex output_port_iiwa_command_idx_;
 
   // a constant reference to the MBP in plan_factory_.
   const drake::multibody::MultibodyPlant<double> &plant_;

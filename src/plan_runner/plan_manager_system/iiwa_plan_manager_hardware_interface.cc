@@ -39,7 +39,7 @@ IiwaPlanManagerHardwareInterface::IiwaPlanManagerHardwareInterface(
   auto iiwa_command_pub = builder.AddSystem(
       drake::systems::lcm::LcmPublisherSystem::Make<drake::lcmt_iiwa_command>(
           "IIWA_COMMAND", lcm, control_period_seconds));
-  builder.Connect(plan_manager->GetOutputPort("lcmt_iiwa_command"),
+  builder.Connect(plan_manager->get_iiwa_command_output_port(),
                   iiwa_command_pub->get_input_port());
 
   diagram_ = builder.Build();
