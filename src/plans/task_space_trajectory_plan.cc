@@ -13,9 +13,6 @@ void TaskSpaceTrajectoryPlan::Step(const State &state, double control_period,
   const drake::multibody::Frame<double> &frame_E =
       plant_->GetFrameByName("iiwa_link_7");
 
-  drake::math::RigidTransform X_WE_now =
-      plant_->EvalBodyPoseInWorld(*plant_context_, frame_E.body());
-
   // 2. Ask diffik to solve for desired position.
   drake::math::RigidTransformd X_WE_desired(quat_traj_.orientation(t),
                                             xyz_traj_.value(t));
