@@ -21,12 +21,9 @@ public:
       : PlanBase(plant), quat_traj_(std::move(quat_traj)),
         xyz_traj_(std::move(xyz_traj)) {
 
-    params_ =
-        std::move(std::unique_ptr<drake::manipulation::planner::
-                                      DifferentialInverseKinematicsParameters>(
-            new drake::manipulation::planner::
-                DifferentialInverseKinematicsParameters(
-                    plant_->num_positions(), plant_->num_velocities())));
+    params_ = std::make_unique<
+        drake::manipulation::planner::DifferentialInverseKinematicsParameters>(
+        plant_->num_positions(), plant_->num_velocities());
 
     plant_context_ = plant_->CreateDefaultContext();
   }
