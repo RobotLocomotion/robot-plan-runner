@@ -4,7 +4,7 @@
 #include "drake/common/trajectories/piecewise_quaternion.h"
 #include "drake/multibody/parsing/parser.h"
 
-#include "joint_space_plan.h"
+#include "joint_space_trajectory_plan.h"
 #include "task_space_trajectory_plan.h"
 
 using drake::trajectories::PiecewisePolynomial;
@@ -33,14 +33,14 @@ IiwaPlanFactory::MakePlan(const drake::lcmt_robot_plan &msg_plan) const {
   // TODO: replace this with a better test and use an lcm type with an
   //  enum for plan types?
   if (msg_plan.plan.at(0).joint_name.at(0) == "iiwa_joint_0") {
-    return MakeJointSpacePlan(msg_plan);
+    return MakeJointSpaceTrajectoryPlan(msg_plan);
   } else if (msg_plan.plan.at(0).joint_name.at(0) == "qw") {
     return MakeTaskSpaceTrajectoryPlan(msg_plan);
   }
   throw std::runtime_error("error in plan lcm message.");
 }
 
-std::unique_ptr<PlanBase> IiwaPlanFactory::MakeJointSpacePlan(
+std::unique_ptr<PlanBase> IiwaPlanFactory::MakeJointSpaceTrajectoryPlan(
     const drake::lcmt_robot_plan &msg_plan) const {
   int n_knots = msg_plan.num_states;
   int n_q = msg_plan.plan.at(0).num_joints;
@@ -57,7 +57,8 @@ std::unique_ptr<PlanBase> IiwaPlanFactory::MakeJointSpacePlan(
   auto q_traj =
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
           t_knots, q_knots, VectorXd::Zero(n_q), VectorXd::Zero(n_q));
-  return std::make_unique<JointSpacePlan>(std::move(q_traj), plant_.get());
+  return std::make_unique<JointSpaceTrajectoryPlan>(std::move(q_traj),
+                                                    plant_.get());
 }
 
 std::unique_ptr<PlanBase> IiwaPlanFactory::MakeTaskSpaceTrajectoryPlan(

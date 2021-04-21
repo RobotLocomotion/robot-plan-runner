@@ -2,7 +2,6 @@
 
 #include "plan_factory_base.h"
 
-
 class IiwaPlanFactory : public PlanFactory {
 public:
   IiwaPlanFactory();
@@ -14,7 +13,7 @@ public:
 
 private:
   [[nodiscard]] std::unique_ptr<PlanBase>
-  MakeJointSpacePlan(const drake::lcmt_robot_plan &msg_plan) const;
+  MakeJointSpaceTrajectoryPlan(const drake::lcmt_robot_plan &msg_plan) const;
   [[nodiscard]] std::unique_ptr<PlanBase>
   MakeTaskSpaceTrajectoryPlan(const drake::lcmt_robot_plan &msg_plan) const;
 };
