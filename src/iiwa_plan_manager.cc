@@ -11,8 +11,12 @@ using std::cout;
 using std::endl;
 
 IiwaPlanManager::IiwaPlanManager(double control_period)
-    : control_period_(control_period) {
-  state_machine_ = std::make_unique<PlanManagerStateMachine>();
+    : control_period_seconds_(control_period) {
+  double t_now_seconds =
+      std::chrono::duration_cast<DoubleSeconds>(
+          std::chrono::high_resolution_clock::now().time_since_epoch())
+          .count();
+  state_machine_ = std::make_unique<PlanManagerStateMachine>(t_now_seconds);
 }
 
 IiwaPlanManager::~IiwaPlanManager() {
@@ -49,8 +53,12 @@ void IiwaPlanManager::CalcCommandFromStatus() {
 void IiwaPlanManager::PrintStateMachineStatus() const {
   using namespace std::chrono_literals;
   while (true) {
-    std::this_thread::sleep_for(1s);
-    { state_machine_->PrintCurrentState(); }
+    std::this_thread::sleep_for(1000ms);
+    double t_now_seconds =
+        std::chrono::duration_cast<DoubleSeconds>(
+            std::chrono::high_resolution_clock::now().time_since_epoch())
+            .count();
+    state_machine_->PrintCurrentState(t_now_seconds);
   }
 }
 
@@ -117,24 +125,28 @@ void IiwaPlanManager::HandleIiwaStatus(
   auto t_now = std::chrono::high_resolution_clock::now();
   {
     std::lock_guard<std::mutex> lock(mutex_state_machine_);
-    state_machine_->receive_new_status_msg();
-    plan = state_machine_->GetCurrentPlan(t_now);
+    state_machine_->ReceiveNewStatusMsg(*status_msg);
+    plan = state_machine_->GetCurrentPlan(t_now, *status_msg);
   }
 
+  const int num_joints = iiwa_status_msg_.num_joints;
   // Compute command.
   State s(Eigen::Map<VectorXd>(iiwa_status_msg_.joint_position_measured.data(),
-                               iiwa_status_msg_.num_joints),
+                               num_joints),
           Eigen::Map<VectorXd>(iiwa_status_msg_.joint_velocity_estimated.data(),
-                               iiwa_status_msg_.num_joints),
+                               num_joints),
           Eigen::Map<VectorXd>(iiwa_status_msg_.joint_torque_external.data(),
-                               iiwa_status_msg_.num_joints));
+                               num_joints));
   Command c;
   if (plan) {
-    plan->Step(s, control_period_, state_machine_->GetCurrentPlanUpTime(t_now),
-               &c);
+    plan->Step(s, control_period_seconds_,
+               state_machine_->GetCurrentPlanUpTime(t_now), &c);
+  } else if (state_machine_->get_state_type() ==
+             PlanManagerStateTypes::kStateIdle) {
+    c.q_cmd = state_machine_->get_iiwa_position_command_idle();
+    c.tau_cmd = Eigen::VectorXd::Zero(num_joints);
   } else {
-    // TODO: no command is sent if there is no plan. Make sure that this is
-    //  the desired behavior.
+    // No commands are sent in state INIT or ERROR.
     return;
   }
 
@@ -146,10 +158,10 @@ void IiwaPlanManager::HandleIiwaStatus(
   }
   if (!command_has_error) {
     drake::lcmt_iiwa_command cmd_msg;
-    cmd_msg.num_joints = status_msg->num_joints;
-    cmd_msg.num_torques = status_msg->num_joints;
+    cmd_msg.num_joints = num_joints;
+    cmd_msg.num_torques = num_joints;
     cmd_msg.utime = status_msg->utime;
-    for (int i = 0; i < cmd_msg.num_joints; i++) {
+    for (int i = 0; i < num_joints; i++) {
       cmd_msg.joint_position.push_back(c.q_cmd[i]);
       cmd_msg.joint_torque.push_back(c.tau_cmd[i]);
     }
