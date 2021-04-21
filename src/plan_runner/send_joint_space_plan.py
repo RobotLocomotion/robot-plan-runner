@@ -1,10 +1,11 @@
+import time
+
 import numpy as np
 import zmq
+import lcm
 
 from drake import lcmt_robot_state
 from drake import lcmt_robot_plan
-
-from pydrake.trajectories import PiecewisePolynomial
 
 #%%
 t_knots = np.array([0, 10])
@@ -21,6 +22,11 @@ def calc_plan_msg(t_knots, q_knots):
     n_knots, n_q = q_knots.shape
     msg_plan = lcmt_robot_plan()
 
+    # It is important that the utime of each plan is unique. The drake
+    # systems version of PlanManager uses utime to tell if one plan is
+    # different from another.
+    msg_plan.utime = round(time.time() * 1000)
+
     joint_names = ["iiwa_joint_{}".format(i) for i in range(n_q)]
 
     msg_plan.num_states = n_knots
@@ -36,19 +42,29 @@ def calc_plan_msg(t_knots, q_knots):
     return msg_plan
 
 
-#%%
+#%% zmq client.
 context = zmq.Context()
 socket = context.socket(zmq.REQ)
 socket.connect("tcp://localhost:5555")
 
-#%%
+#%% send msg 1 via zmq.
 socket.send(calc_plan_msg(t_knots, q_knots1).encode())
 print("lcm msg sent")
 msg = socket.recv()
 print(msg)
 
-#%%
+#%% send msg 2 via zmq.
 socket.send(calc_plan_msg(t_knots, q_knots2).encode())
 print("lcm msg sent")
 msg = socket.recv()
 print(msg)
+
+
+#%% lcm client.
+lc = lcm.LCM()
+
+#%% send msg 1 via lcm.
+lc.publish("ROBOT_PLAN", calc_plan_msg(t_knots, q_knots1).encode())
+
+#%% send msg 2 via lcm.
+lc.publish("ROBOT_PLAN", calc_plan_msg(t_knots, q_knots2).encode())

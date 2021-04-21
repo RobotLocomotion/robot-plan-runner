@@ -3,7 +3,7 @@
 #include "plan_factory_base.h"
 
 
-class IiwaPlanFactory : PlanFactory {
+class IiwaPlanFactory : public PlanFactory {
 public:
   IiwaPlanFactory();
 
