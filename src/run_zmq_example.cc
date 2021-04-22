@@ -53,7 +53,7 @@ int main() {
     cout << "compare strings "
          << (plan_lcm_msg.plan[0].joint_name[0] == "iiwa_joint_0") << endl;
 
-    auto plan = plan_factory.MakePlan(plan_lcm_msg, config);
+    auto plan = plan_factory.MakePlan(plan_lcm_msg);
     plan->Step(s, 0.005, 0.876, &c);
     cout << "q_cmd " << c.q_cmd.transpose() << endl;
     cout << "tau_cmd " << c.tau_cmd.transpose() << endl;

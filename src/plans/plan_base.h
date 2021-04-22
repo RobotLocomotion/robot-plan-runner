@@ -2,7 +2,6 @@
 
 #include <optional>
 #include <vector>
-#include <yaml-cpp/yaml.h>
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include <Eigen/Dense>
@@ -38,9 +37,8 @@ struct Command {
 
 class PlanBase {
 public:
-  explicit PlanBase(const drake::multibody::MultibodyPlant<double> *plant,
-                    YAML::Node config)
-      : plant_(plant), config_(config){};
+  explicit PlanBase(const drake::multibody::MultibodyPlant<double> *plant)
+      : plant_(plant){};
 
   virtual ~PlanBase() = default;
 
@@ -51,5 +49,4 @@ public:
 
 protected:
   drake::multibody::MultibodyPlant<double> const *const plant_{nullptr};
-  YAML::Node config_;
 };
