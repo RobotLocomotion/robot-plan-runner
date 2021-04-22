@@ -20,7 +20,8 @@ IiwaPlanFactory::IiwaPlanFactory(const YAML::Node &config) : config_(config) {
   plant_ = std::make_unique<drake::multibody::MultibodyPlant<double>>(1e-3);
   auto parser = drake::multibody::Parser(plant_.get());
 
-  std::string iiwa_path = config_["robot_sdf_path"].as<std::string>();
+  const std::string iiwa_path = 
+    config_["robot_sdf_path"].as<std::string>();
   iiwa_path = drake::FindResourceOrThrow(iiwa_path);
   parser.AddModelFromFile(iiwa_path);
   plant_->WeldFrames(

@@ -10,7 +10,7 @@ using Eigen::VectorXd;
 using std::cout;
 using std::endl;
 
-IiwaPlanManager::IiwaPlanManager(YAML::Node config)
+IiwaPlanManager::IiwaPlanManager(const YAML::Node config)
     : config_(std::move(config)),
       control_period_seconds_(config["control_period"].as<double>()) {
   double t_now_seconds =

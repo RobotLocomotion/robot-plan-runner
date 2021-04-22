@@ -20,5 +20,4 @@ public:
 private:
   std::unique_ptr<drake::systems::Diagram<double>> diagram_;
   std::unique_ptr<drake::lcm::DrakeLcm> owned_lcm_;
-  YAML::Node config_;
 };

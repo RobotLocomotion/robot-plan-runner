@@ -11,7 +11,7 @@ class IiwaPlanManagerSystem : public drake::systems::LeafSystem<double> {
 public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(IiwaPlanManagerSystem);
 
-  explicit IiwaPlanManagerSystem(YAML::Node config);
+  explicit IiwaPlanManagerSystem(const YAML::Node config);
 
   const drake::systems::InputPort<double> &get_iiwa_status_input_port() const {
     return get_input_port(input_port_iiwa_status_idx_);
@@ -45,5 +45,5 @@ private:
   drake::systems::InputPortIndex input_port_robot_plan_idx_;
   drake::systems::OutputPortIndex output_port_iiwa_command_idx_;
 
-  YAML::Node config_;
+  const YAML::Node config_;
 };

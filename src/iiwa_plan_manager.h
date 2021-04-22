@@ -12,7 +12,7 @@
 
 class IiwaPlanManager {
 public:
-  IiwaPlanManager(YAML::Node config);
+  IiwaPlanManager(const YAML::Node config);
   ~IiwaPlanManager();
   void Run();
 
@@ -23,7 +23,7 @@ private:
   std::unordered_map<std::string, std::thread> threads_;
   std::unique_ptr<IiwaPlanFactory> plan_factory_;
 
-  YAML::Node config_;
+  const YAML::Node config_;
 
   // Iiwa status + command thread.
   std::unique_ptr<lcm::LCM> lcm_status_command_;
