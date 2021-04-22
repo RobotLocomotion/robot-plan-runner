@@ -16,15 +16,15 @@ using std::cout;
 using std::endl;
 using std::vector;
 
-IiwaPlanFactory::IiwaPlanFactory() {
+IiwaPlanFactory::IiwaPlanFactory(const YAML::Node &config) : config_(config) {
   plant_ = std::make_unique<drake::multibody::MultibodyPlant<double>>(1e-3);
   auto parser = drake::multibody::Parser(plant_.get());
-  std::string iiwa_path =
-      "drake/manipulation/models/iiwa_description/iiwa7/iiwa7_no_collision.sdf";
-  iiwa_path = drake::FindResourceOrThrow(iiwa_path);
-  parser.AddModelFromFile(iiwa_path);
-  plant_->WeldFrames(plant_->world_frame(),
-                     plant_->GetFrameByName("iiwa_link_0"));
+
+  const auto& iiwa_path = config_["robot_sdf_path"].as<std::string>();
+  parser.AddModelFromFile(drake::FindResourceOrThrow(iiwa_path));
+  plant_->WeldFrames(
+      plant_->world_frame(),
+      plant_->GetFrameByName(config_["robot_baselink_name"].as<std::string>()));
   plant_->Finalize();
 }
 
@@ -90,5 +90,6 @@ std::unique_ptr<PlanBase> IiwaPlanFactory::MakeTaskSpaceTrajectoryPlan(
           t_knots, xyz_knots, VectorXd::Zero(3), VectorXd::Zero(3));
 
   return std::make_unique<TaskSpaceTrajectoryPlan>(
-      std::move(quat_traj), std::move(xyz_traj), plant_.get());
+      std::move(quat_traj), std::move(xyz_traj), plant_.get(),
+      config_["robot_ee_body_name"].as<std::string>());
 }

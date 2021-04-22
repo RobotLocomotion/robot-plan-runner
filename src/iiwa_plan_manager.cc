@@ -10,13 +10,19 @@ using Eigen::VectorXd;
 using std::cout;
 using std::endl;
 
-IiwaPlanManager::IiwaPlanManager(double control_period)
-    : control_period_seconds_(control_period) {
+IiwaPlanManager::IiwaPlanManager(YAML::Node config)
+    : config_(std::move(config)),
+      control_period_seconds_(config["control_period"].as<double>()) {
   double t_now_seconds =
       std::chrono::duration_cast<DoubleSeconds>(
           std::chrono::high_resolution_clock::now().time_since_epoch())
           .count();
-  state_machine_ = std::make_unique<PlanManagerStateMachine>(t_now_seconds);
+  state_machine_ =
+      std::make_unique<PlanManagerStateMachine>(t_now_seconds, config_);
+  plan_factory_ = std::make_unique<IiwaPlanFactory>(config_);
+
+  // TODO(terry-suh): make another method here to check for errors in the config
+  // file. are all the required fields there?
 }
 
 IiwaPlanManager::~IiwaPlanManager() {
@@ -38,8 +44,9 @@ void IiwaPlanManager::Run() {
 
 void IiwaPlanManager::CalcCommandFromStatus() {
   lcm_status_command_ = std::make_unique<lcm::LCM>();
-  lcm_status_command_->subscribe("IIWA_STATUS",
-                                 &IiwaPlanManager::HandleIiwaStatus, this);
+  lcm_status_command_->subscribe(
+      config_["lcm_status_channel"].as<std::string>(),
+      &IiwaPlanManager::HandleIiwaStatus, this);
   while (true) {
     // >0 if a message was handled,
     // 0 if the function timed out,
@@ -65,7 +72,7 @@ void IiwaPlanManager::PrintStateMachineStatus() const {
 void IiwaPlanManager::ReceivePlans() {
   zmq::context_t ctx;
   zmq::socket_t socket(ctx, ZMQ_REP);
-  socket.bind("tcp://*:5555");
+  socket.bind(config_["zmq_socket"].as<std::string>());
 
   while (true) {
     zmq::message_t plan_msg;
@@ -77,7 +84,7 @@ void IiwaPlanManager::ReceivePlans() {
 
     drake::lcmt_robot_plan plan_lcm_msg;
     plan_lcm_msg.decode(plan_msg.data(), 0, plan_msg.size());
-    auto plan = plan_factory_.MakePlan(plan_lcm_msg);
+    auto plan = plan_factory_->MakePlan(plan_lcm_msg);
 
     {
       std::lock_guard<std::mutex> lock(mutex_state_machine_);
@@ -165,6 +172,7 @@ void IiwaPlanManager::HandleIiwaStatus(
       cmd_msg.joint_position.push_back(c.q_cmd[i]);
       cmd_msg.joint_torque.push_back(c.tau_cmd[i]);
     }
-    lcm_status_command_->publish("IIWA_COMMAND", &cmd_msg);
+    lcm_status_command_->publish(
+        config_["lcm_command_channel"].as<std::string>(), &cmd_msg);
   }
 }

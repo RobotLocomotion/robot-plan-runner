@@ -9,16 +9,13 @@ void TaskSpaceTrajectoryPlan::Step(const State &state, double control_period,
 
   // 1. Update diffik mbp with the current status of the robot.
   plant_->SetPositions(plant_context_.get(), state.q);
-  // TODO(terry-suh): Get this from a config file.
-  const drake::multibody::Frame<double> &frame_E =
-      plant_->GetFrameByName("iiwa_link_7");
 
   // 2. Ask diffik to solve for desired position.
   drake::math::RigidTransformd X_WE_desired(quat_traj_.orientation(t),
                                             xyz_traj_.value(t));
 
   DifferentialInverseKinematicsResult result = DoDifferentialInverseKinematics(
-      *plant_, *plant_context_, X_WE_desired.GetAsIsometry3(), frame_E,
+      *plant_, *plant_context_, X_WE_desired.GetAsIsometry3(), frame_E_,
       *params_);
 
   // 3. Check for errors and integrate.

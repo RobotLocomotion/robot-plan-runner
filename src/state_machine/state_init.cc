@@ -34,7 +34,8 @@ void StateInit::QueueNewPlan(PlanManagerStateMachine *state_machine,
 }
 
 bool StateInit::CommandHasError(const State &state, const Command &cmd,
-                     PlanManagerStateMachine *state_machine) {
+                     PlanManagerStateMachine *state_machine,
+                     const double q_threshold) {
   std::string error_msg = "CommandHasError should not be called in state ";
   error_msg += get_state_name();
   error_msg += ".";
