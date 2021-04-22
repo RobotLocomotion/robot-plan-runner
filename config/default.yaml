@@ -7,7 +7,7 @@ zmq_socket: "tcp://*:5555"
 # Robot Parameters
 robot_sdf_path: "drake/manipulation/models/iiwa_description/iiwa7/iiwa7_no_collision.sdf"
 robot_baselink_name: "iiwa_link_0"
-robot_ee_body_name: "iiwa_link_5"
+robot_ee_body_name: "iiwa_link_7"
 
 # Control Parameters
 control_period: 0.005
