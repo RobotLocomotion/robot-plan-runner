@@ -12,7 +12,7 @@
 
 class IiwaPlanManager {
 public:
-  IiwaPlanManager(const YAML::Node config);
+  IiwaPlanManager(YAML::Node config);
   ~IiwaPlanManager();
   void Run();
 

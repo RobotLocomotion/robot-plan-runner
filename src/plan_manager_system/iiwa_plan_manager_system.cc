@@ -9,7 +9,7 @@ using drake::lcmt_robot_plan;
 using drake::systems::BasicVector;
 using Eigen::VectorXd;
 
-IiwaPlanManagerSystem::IiwaPlanManagerSystem(const YAML::Node config)
+IiwaPlanManagerSystem::IiwaPlanManagerSystem(YAML::Node config)
     : config_(std::move(config)),
       control_period_seconds_(config["control_period"].as<double>()) {
 

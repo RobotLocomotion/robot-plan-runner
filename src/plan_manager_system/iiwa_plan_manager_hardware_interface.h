@@ -7,7 +7,7 @@
 
 class IiwaPlanManagerHardwareInterface {
 public:
-  explicit IiwaPlanManagerHardwareInterface(YAML::Node config);
+  explicit IiwaPlanManagerHardwareInterface(const YAML::Node &config);
 
   void Run(double realtime_rate);
 

@@ -9,7 +9,7 @@
 #include "iiwa_plan_manager_hardware_interface.h"
 
 IiwaPlanManagerHardwareInterface::IiwaPlanManagerHardwareInterface(
-    YAML::Node config) {
+    const YAML::Node &config) {
 
   double control_period_seconds = config["control_period"].as<double>();
 
