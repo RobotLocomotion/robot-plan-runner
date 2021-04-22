@@ -62,6 +62,7 @@ find_package(PythonLibs ${FIND_PYTHON_INTERP_VERSION} MODULE REQUIRED)
 find_package(drake CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 find_package(cppzmq REQUIRED)
+find_package(yaml-cpp REQUIRED yaml-cpp>0.5)
 
 get_filename_component(PYTHONPATH
   "${drake_DIR}/../../python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages"
@@ -77,4 +78,5 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_subdirectory(src)
+add_subdirectory(config)
 add_subdirectory(third_party)

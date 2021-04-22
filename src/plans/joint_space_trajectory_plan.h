@@ -7,8 +7,8 @@ class JointSpaceTrajectoryPlan : public PlanBase {
 public:
   JointSpaceTrajectoryPlan(
       drake::trajectories::PiecewisePolynomial<double> q_traj,
-      const drake::multibody::MultibodyPlant<double> *plant)
-      : PlanBase(plant), q_traj_(std::move(q_traj)){};
+      const drake::multibody::MultibodyPlant<double> *plant, YAML::Node config)
+      : PlanBase(plant, config), q_traj_(std::move(q_traj)){};
 
   ~JointSpaceTrajectoryPlan() override = default;
 

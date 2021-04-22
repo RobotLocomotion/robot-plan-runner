@@ -59,7 +59,6 @@ print("lcm msg sent")
 msg = socket.recv()
 print(msg)
 
-
 #%% lcm client.
 lc = lcm.LCM()
 

@@ -12,7 +12,7 @@ public:
 
   [[nodiscard]] virtual std::unique_ptr<PlanBase>
 
-  MakePlan(const drake::lcmt_robot_plan &msg_plan) const = 0;
+  MakePlan(const drake::lcmt_robot_plan &msg_plan, YAML::Node config) const = 0;
 
   [[nodiscard]] const drake::multibody::MultibodyPlant<double> &
   get_plant() const {

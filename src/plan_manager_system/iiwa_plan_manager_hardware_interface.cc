@@ -1,15 +1,19 @@
 #include <fstream>
 #include <numeric>
 
+#include "drake/systems/analysis/simulator.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-#include "drake/systems/analysis/simulator.h"
 
 #include "iiwa_plan_manager_hardware_interface.h"
 
 IiwaPlanManagerHardwareInterface::IiwaPlanManagerHardwareInterface(
-    double control_period_seconds) {
+    YAML::Node config)
+    : config_(config) {
+
+  double control_period_seconds = config_["control_period"].as<double>();
+
   owned_lcm_ = std::make_unique<drake::lcm::DrakeLcm>();
 
   drake::systems::DiagramBuilder<double> builder;
@@ -19,26 +23,27 @@ IiwaPlanManagerHardwareInterface::IiwaPlanManagerHardwareInterface(
 
   // PlanManagerSystem.
   auto plan_manager =
-      builder.template AddSystem<IiwaPlanManagerSystem>(control_period_seconds);
+      builder.template AddSystem<IiwaPlanManagerSystem>(config_);
 
   // Subscribe to IIWA_STATUS.
   auto sub_iiwa_status = builder.AddSystem(
       drake::systems::lcm::LcmSubscriberSystem::Make<drake::lcmt_iiwa_status>(
-          "IIWA_STATUS", lcm));
+          config_["lcm_status_channel"].as<std::string>(), lcm));
   builder.Connect(sub_iiwa_status->get_output_port(),
                   plan_manager->get_iiwa_status_input_port());
 
   // Subscribe to ROBOT_PLAN.
   auto sub_robot_plans = builder.AddSystem(
       drake::systems::lcm::LcmSubscriberSystem::Make<drake::lcmt_robot_plan>(
-          "ROBOT_PLAN", lcm));
+          config_["lcm_plan_channel"].as<std::string>(), lcm));
   builder.Connect(sub_robot_plans->get_output_port(),
                   plan_manager->get_robot_plan_input_port());
 
   // Publish iiwa command.
   auto iiwa_command_pub = builder.AddSystem(
       drake::systems::lcm::LcmPublisherSystem::Make<drake::lcmt_iiwa_command>(
-          "IIWA_COMMAND", lcm, control_period_seconds));
+          config_["lcm_command_channel"].as<std::string>(), lcm,
+          control_period_seconds));
   builder.Connect(plan_manager->get_iiwa_command_output_port(),
                   iiwa_command_pub->get_input_port());
 

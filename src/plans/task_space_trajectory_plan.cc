@@ -11,7 +11,7 @@ void TaskSpaceTrajectoryPlan::Step(const State &state, double control_period,
   plant_->SetPositions(plant_context_.get(), state.q);
   // TODO(terry-suh): Get this from a config file.
   const drake::multibody::Frame<double> &frame_E =
-      plant_->GetFrameByName("iiwa_link_7");
+      plant_->GetFrameByName(config_["robot_ee_body_name"].as<std::string>());
 
   // 2. Ask diffik to solve for desired position.
   drake::math::RigidTransformd X_WE_desired(quat_traj_.orientation(t),

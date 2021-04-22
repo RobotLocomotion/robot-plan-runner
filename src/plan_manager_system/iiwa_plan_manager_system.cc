@@ -9,8 +9,12 @@ using drake::lcmt_robot_plan;
 using drake::systems::BasicVector;
 using Eigen::VectorXd;
 
-IiwaPlanManagerSystem::IiwaPlanManagerSystem(double control_period_seconds)
-    : control_period_seconds_(control_period_seconds) {
+IiwaPlanManagerSystem::IiwaPlanManagerSystem(YAML::Node config)
+    : config_(config) {
+
+  control_period_seconds_ = config_["control_period"].as<double>();
+  plan_factory_ = std::make_unique<IiwaPlanFactory>(config_);
+
   // Initialize state machine.
   state_machine_ = std::make_unique<PlanManagerStateMachine>(0);
 
@@ -51,7 +55,7 @@ void IiwaPlanManagerSystem::CalcIiwaCommand(
   if (msg_robot_plan.num_states > 0 and
       msg_robot_plan.utime != last_robot_plan_utime_) {
     // has new message.
-    auto plan = plan_factory_.MakePlan(msg_robot_plan);
+    auto plan = plan_factory_->MakePlan(msg_robot_plan, config_);
     state_machine_->QueueNewPlan(std::move(plan));
     last_robot_plan_utime_ = msg_robot_plan.utime;
   }

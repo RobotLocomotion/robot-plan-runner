@@ -17,8 +17,8 @@ public:
   TaskSpaceTrajectoryPlan(
       drake::trajectories::PiecewiseQuaternionSlerp<double> quat_traj,
       drake::trajectories::PiecewisePolynomial<double> xyz_traj,
-      const drake::multibody::MultibodyPlant<double> *plant)
-      : PlanBase(plant), quat_traj_(std::move(quat_traj)),
+      const drake::multibody::MultibodyPlant<double> *plant, YAML::Node config)
+      : PlanBase(plant, config), quat_traj_(std::move(quat_traj)),
         xyz_traj_(std::move(xyz_traj)) {
 
     params_ = std::make_unique<
