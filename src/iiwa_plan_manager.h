@@ -1,10 +1,11 @@
 #pragma once
-#include "drake_lcmtypes/drake/lcmt_iiwa_status.hpp"
-#include "lcm/lcm-cpp.hpp"
 #include <mutex>
 #include <thread>
 #include <unordered_map>
 #include <yaml-cpp/yaml.h>
+
+#include "drake_lcmtypes/drake/lcmt_iiwa_status.hpp"
+#include "lcm/lcm-cpp.hpp"
 
 #include "plans/iiwa_plan_factory.h"
 #include "state_machine/plan_manager_state_machine.h"
@@ -16,7 +17,7 @@ public:
   void Run();
 
 private:
-  double control_period_seconds_;
+  const double control_period_seconds_;
   mutable std::mutex mutex_state_machine_;
   std::unique_ptr<PlanManagerStateMachine> state_machine_;
   std::unordered_map<std::string, std::thread> threads_;

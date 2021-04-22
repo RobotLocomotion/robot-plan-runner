@@ -1,12 +1,13 @@
 #include "plan_manager_state_machine.h"
-#include "state_init.h"
 #include "state_error.h"
+#include "state_init.h"
 
 using std::string;
 
 PlanManagerStateMachine::PlanManagerStateMachine(
-    double state_machine_start_time_seconds)
-    : state_machine_start_time_seconds_(state_machine_start_time_seconds) {
+    double state_machine_start_time_seconds, const YAML::Node &config)
+    : state_machine_start_time_seconds_(state_machine_start_time_seconds),
+      config_(config) {
   // Initialize to state INIT.
   state_ = StateInit::Instance();
 }
@@ -34,10 +35,9 @@ void PlanManagerStateBase::QueueNewPlan(PlanManagerStateMachine *state_machine,
   throw std::runtime_error(error_msg);
 }
 
-bool PlanManagerStateBase::CommandHasError(const State & state,
-                                           const Command & cmd,
-                                           PlanManagerStateMachine *state_machine,
-                                           const double q_threshold) {
+bool PlanManagerStateBase::CommandHasError(
+    const State &state, const Command &cmd,
+    PlanManagerStateMachine *state_machine, const double q_threshold) {
   bool is_nan =
       cmd.q_cmd.array().isNaN().sum() or cmd.tau_cmd.array().isNaN().sum();
 
@@ -56,4 +56,3 @@ bool PlanManagerStateBase::has_received_status_msg() const {
   error_msg += ".";
   throw std::runtime_error(error_msg);
 }
-

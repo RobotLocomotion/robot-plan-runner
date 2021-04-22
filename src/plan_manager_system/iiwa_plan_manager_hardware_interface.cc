@@ -10,7 +10,7 @@
 
 IiwaPlanManagerHardwareInterface::IiwaPlanManagerHardwareInterface(
     YAML::Node config)
-    : config_(config) {
+    : config_(std::move(config)) {
 
   double control_period_seconds = config_["control_period"].as<double>();
 

@@ -16,11 +16,10 @@ using std::cout;
 using std::endl;
 using std::vector;
 
-IiwaPlanFactory::IiwaPlanFactory(YAML::Node config_) {
+IiwaPlanFactory::IiwaPlanFactory(const YAML::Node &config) : config_(config) {
   plant_ = std::make_unique<drake::multibody::MultibodyPlant<double>>(1e-3);
   auto parser = drake::multibody::Parser(plant_.get());
 
-  std::cout << config_["lcm_status_channel"].as<std::string>() << std::endl;
   std::string iiwa_path = config_["robot_sdf_path"].as<std::string>();
   iiwa_path = drake::FindResourceOrThrow(iiwa_path);
   parser.AddModelFromFile(iiwa_path);
@@ -31,20 +30,19 @@ IiwaPlanFactory::IiwaPlanFactory(YAML::Node config_) {
 }
 
 std::unique_ptr<PlanBase>
-IiwaPlanFactory::MakePlan(const drake::lcmt_robot_plan &msg_plan,
-                          YAML::Node config) const {
+IiwaPlanFactory::MakePlan(const drake::lcmt_robot_plan &msg_plan) const {
   // TODO: replace this with a better test and use an lcm type with an
   //  enum for plan types?
   if (msg_plan.plan.at(0).joint_name.at(0) == "iiwa_joint_0") {
-    return MakeJointSpaceTrajectoryPlan(msg_plan, config);
+    return MakeJointSpaceTrajectoryPlan(msg_plan);
   } else if (msg_plan.plan.at(0).joint_name.at(0) == "qw") {
-    return MakeTaskSpaceTrajectoryPlan(msg_plan, config);
+    return MakeTaskSpaceTrajectoryPlan(msg_plan);
   }
   throw std::runtime_error("error in plan lcm message.");
 }
 
 std::unique_ptr<PlanBase> IiwaPlanFactory::MakeJointSpaceTrajectoryPlan(
-    const drake::lcmt_robot_plan &msg_plan, YAML::Node config) const {
+    const drake::lcmt_robot_plan &msg_plan) const {
   int n_knots = msg_plan.num_states;
   int n_q = msg_plan.plan.at(0).num_joints;
   MatrixXd q_knots(n_q, n_knots);
@@ -61,11 +59,11 @@ std::unique_ptr<PlanBase> IiwaPlanFactory::MakeJointSpaceTrajectoryPlan(
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
           t_knots, q_knots, VectorXd::Zero(n_q), VectorXd::Zero(n_q));
   return std::make_unique<JointSpaceTrajectoryPlan>(std::move(q_traj),
-                                                    plant_.get(), config);
+                                                    plant_.get());
 }
 
 std::unique_ptr<PlanBase> IiwaPlanFactory::MakeTaskSpaceTrajectoryPlan(
-    const drake::lcmt_robot_plan &msg_plan, YAML::Node config) const {
+    const drake::lcmt_robot_plan &msg_plan) const {
 
   int n_knots = msg_plan.num_states;
   vector<double> t_knots(n_knots);
@@ -93,5 +91,6 @@ std::unique_ptr<PlanBase> IiwaPlanFactory::MakeTaskSpaceTrajectoryPlan(
           t_knots, xyz_knots, VectorXd::Zero(3), VectorXd::Zero(3));
 
   return std::make_unique<TaskSpaceTrajectoryPlan>(
-      std::move(quat_traj), std::move(xyz_traj), plant_.get(), config);
+      std::move(quat_traj), std::move(xyz_traj), plant_.get(),
+      config_["robot_ee_body_name"].as<std::string>());
 }

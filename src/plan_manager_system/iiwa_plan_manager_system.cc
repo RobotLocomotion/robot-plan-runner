@@ -10,13 +10,13 @@ using drake::systems::BasicVector;
 using Eigen::VectorXd;
 
 IiwaPlanManagerSystem::IiwaPlanManagerSystem(YAML::Node config)
-    : config_(config) {
+    : config_(std::move(config)),
+      control_period_seconds_(config["control_period"].as<double>()) {
 
-  control_period_seconds_ = config_["control_period"].as<double>();
   plan_factory_ = std::make_unique<IiwaPlanFactory>(config_);
 
   // Initialize state machine.
-  state_machine_ = std::make_unique<PlanManagerStateMachine>(0);
+  state_machine_ = std::make_unique<PlanManagerStateMachine>(0, config_);
 
   set_name("IiwaPlanManagerSystem");
   DeclarePeriodicPublishEvent(1.0, 0,
@@ -55,7 +55,7 @@ void IiwaPlanManagerSystem::CalcIiwaCommand(
   if (msg_robot_plan.num_states > 0 and
       msg_robot_plan.utime != last_robot_plan_utime_) {
     // has new message.
-    auto plan = plan_factory_->MakePlan(msg_robot_plan, config_);
+    auto plan = plan_factory_->MakePlan(msg_robot_plan);
     state_machine_->QueueNewPlan(std::move(plan));
     last_robot_plan_utime_ = msg_robot_plan.utime;
   }
@@ -104,8 +104,7 @@ void IiwaPlanManagerSystem::CalcIiwaCommand(
   }
 
   // Check command for error.
-  if (!state_machine_->CommandHasError(s, c, 
-    config_["q_threshold"].as<double>())) {
+  if (!state_machine_->CommandHasError(s, c)) {
     const int num_joints = msg_iiwa_status.num_joints;
     msg_iiwa_command.num_joints = num_joints;
     msg_iiwa_command.num_torques = num_joints;

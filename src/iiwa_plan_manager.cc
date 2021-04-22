@@ -10,13 +10,15 @@ using Eigen::VectorXd;
 using std::cout;
 using std::endl;
 
-IiwaPlanManager::IiwaPlanManager(YAML::Node config) : config_(config) {
+IiwaPlanManager::IiwaPlanManager(YAML::Node config)
+    : config_(std::move(config)),
+      control_period_seconds_(config["control_period"].as<double>()) {
   double t_now_seconds =
       std::chrono::duration_cast<DoubleSeconds>(
           std::chrono::high_resolution_clock::now().time_since_epoch())
           .count();
-  state_machine_ = std::make_unique<PlanManagerStateMachine>(t_now_seconds);
-  control_period_seconds_ = config_["control_period"].as<double>();
+  state_machine_ =
+      std::make_unique<PlanManagerStateMachine>(t_now_seconds, config_);
   plan_factory_ = std::make_unique<IiwaPlanFactory>(config_);
 
   // TODO(terry-suh): make another method here to check for errors in the config
@@ -82,7 +84,7 @@ void IiwaPlanManager::ReceivePlans() {
 
     drake::lcmt_robot_plan plan_lcm_msg;
     plan_lcm_msg.decode(plan_msg.data(), 0, plan_msg.size());
-    auto plan = plan_factory_->MakePlan(plan_lcm_msg, config_);
+    auto plan = plan_factory_->MakePlan(plan_lcm_msg);
 
     {
       std::lock_guard<std::mutex> lock(mutex_state_machine_);
@@ -159,8 +161,7 @@ void IiwaPlanManager::HandleIiwaStatus(
   bool command_has_error;
   {
     std::lock_guard<std::mutex> lock(mutex_state_machine_);
-    command_has_error = state_machine_->CommandHasError(s, c,
-      config_["q_threshold"].as<double>());
+    command_has_error = state_machine_->CommandHasError(s, c);
   }
   if (!command_has_error) {
     drake::lcmt_iiwa_command cmd_msg;

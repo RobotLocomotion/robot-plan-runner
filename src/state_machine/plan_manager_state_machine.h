@@ -2,6 +2,7 @@
 #include <chrono>
 #include <memory>
 #include <queue>
+#include <yaml-cpp/yaml.h>
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake_lcmtypes/drake/lcmt_iiwa_status.hpp"
@@ -21,7 +22,8 @@ class PlanManagerStateBase;
 
 class PlanManagerStateMachine {
 public:
-  explicit PlanManagerStateMachine(double state_machine_start_time_seconds);
+  explicit PlanManagerStateMachine(double state_machine_start_time_seconds,
+                                   const YAML::Node &config);
   // State-dependent methods.
   // TODO: separate the logic that schedules plans into another function.
   [[nodiscard]] const PlanBase *
@@ -46,7 +48,8 @@ public:
   // Currently checks for:
   // 1. Nans
   // 2. If cmd.q_cmd and state.q is too far away with a hard-coded threshold.
-  bool CommandHasError(const State &state, const Command &cmd, const double q_threshold);
+  //    This threshold is decided by a parameter in the config file.
+  bool CommandHasError(const State &state, const Command &cmd);
 
   // Returns true if an IIWA_STATUS message has been received.
   [[nodiscard]] bool has_received_status_msg() const;
@@ -98,6 +101,8 @@ private:
   inline void ChangeState(PlanManagerStateBase *new_state);
   PlanManagerStateBase *state_{nullptr};
   std::queue<std::unique_ptr<PlanBase>> plans_;
+
+  const YAML::Node &config_;
 
   // In PlanManagerStateMachine, this stores TimePoint::time_since_epoch() in
   // seconds as a double.
@@ -221,7 +226,7 @@ PlanManagerStateMachine::set_current_plan_start_time(double t_now_seconds) {
 }
 
 inline bool PlanManagerStateMachine::CommandHasError(const State &state,
-                                                     const Command &cmd,
-                                                     const double q_threshold) {
-  return state_->CommandHasError(state, cmd, this, q_threshold);
+                                                     const Command &cmd) {
+  return state_->CommandHasError(state, cmd, this,
+                                 config_["q_threshold"].as<double>());
 }
