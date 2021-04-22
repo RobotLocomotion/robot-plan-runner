@@ -36,11 +36,12 @@ void PlanManagerStateBase::QueueNewPlan(PlanManagerStateMachine *state_machine,
 
 bool PlanManagerStateBase::CommandHasError(const State & state,
                                            const Command & cmd,
-                                           PlanManagerStateMachine *state_machine) {
+                                           PlanManagerStateMachine *state_machine,
+                                           const double q_threshold) {
   bool is_nan =
       cmd.q_cmd.array().isNaN().sum() or cmd.tau_cmd.array().isNaN().sum();
 
-  bool is_too_far_away = (state.q - cmd.q_cmd).norm() > 0.05;
+  bool is_too_far_away = (state.q - cmd.q_cmd).norm() > q_threshold;
 
   bool is_error = is_nan or is_too_far_away;
   if (is_error) {

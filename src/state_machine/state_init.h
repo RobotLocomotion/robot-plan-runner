@@ -18,7 +18,8 @@ public:
                     std::unique_ptr<PlanBase> plan) override;
 
   bool CommandHasError(const State &state, const Command &cmd,
-                       PlanManagerStateMachine *state_machine) override;
+                       PlanManagerStateMachine *state_machine,
+                       const double q_threshold) override;
 
   void PrintCurrentState(const PlanManagerStateMachine *manager,
                          double t_now_seconds) const override;

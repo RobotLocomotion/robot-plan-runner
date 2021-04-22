@@ -159,7 +159,8 @@ void IiwaPlanManager::HandleIiwaStatus(
   bool command_has_error;
   {
     std::lock_guard<std::mutex> lock(mutex_state_machine_);
-    command_has_error = state_machine_->CommandHasError(s, c);
+    command_has_error = state_machine_->CommandHasError(s, c,
+      config_["q_threshold"].as<double>());
   }
   if (!command_has_error) {
     drake::lcmt_iiwa_command cmd_msg;

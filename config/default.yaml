@@ -11,3 +11,4 @@ robot_ee_body_name: "iiwa_link_5"
 
 # Control Parameters
 control_period: 0.005
+q_threshold: 0.05 # norm between current q and commanded q.

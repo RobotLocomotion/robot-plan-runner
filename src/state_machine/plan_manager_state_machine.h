@@ -46,7 +46,7 @@ public:
   // Currently checks for:
   // 1. Nans
   // 2. If cmd.q_cmd and state.q is too far away with a hard-coded threshold.
-  bool CommandHasError(const State &state, const Command &cmd);
+  bool CommandHasError(const State &state, const Command &cmd, const double q_threshold);
 
   // Returns true if an IIWA_STATUS message has been received.
   [[nodiscard]] bool has_received_status_msg() const;
@@ -123,7 +123,8 @@ public:
                             std::unique_ptr<PlanBase> plan);
 
   virtual bool CommandHasError(const State &state, const Command &cmd,
-                               PlanManagerStateMachine *state_machine);
+                               PlanManagerStateMachine *state_machine,
+                               const double q_threshold);
   // Pure virtual functions.
   [[nodiscard]] virtual PlanManagerStateTypes get_state_type() const = 0;
 
@@ -220,6 +221,7 @@ PlanManagerStateMachine::set_current_plan_start_time(double t_now_seconds) {
 }
 
 inline bool PlanManagerStateMachine::CommandHasError(const State &state,
-                                                     const Command &cmd) {
-  return state_->CommandHasError(state, cmd, this);
+                                                     const Command &cmd,
+                                                     const double q_threshold) {
+  return state_->CommandHasError(state, cmd, this, q_threshold);
 }

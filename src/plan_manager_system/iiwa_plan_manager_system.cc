@@ -104,7 +104,8 @@ void IiwaPlanManagerSystem::CalcIiwaCommand(
   }
 
   // Check command for error.
-  if (!state_machine_->CommandHasError(s, c)) {
+  if (!state_machine_->CommandHasError(s, c, 
+    config_["q_threshold"].as<double>())) {
     const int num_joints = msg_iiwa_status.num_joints;
     msg_iiwa_command.num_joints = num_joints;
     msg_iiwa_command.num_torques = num_joints;
