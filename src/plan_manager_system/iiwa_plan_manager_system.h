@@ -32,7 +32,7 @@ private:
 
   void PrintCurrentState(const drake::systems::Context<double> &context) const;
 
-  double control_period_seconds_{};
+  const double control_period_seconds_{};
   std::unique_ptr<IiwaPlanFactory> plan_factory_;
   std::unique_ptr<PlanManagerStateMachine> state_machine_;
   // signature of the last robot plan.

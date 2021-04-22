@@ -17,7 +17,7 @@ public:
   void Run();
 
 private:
-  double control_period_seconds_;
+  const double control_period_seconds_;
   mutable std::mutex mutex_state_machine_;
   std::unique_ptr<PlanManagerStateMachine> state_machine_;
   std::unordered_map<std::string, std::thread> threads_;

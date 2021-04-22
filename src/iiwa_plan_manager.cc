@@ -11,13 +11,13 @@ using std::cout;
 using std::endl;
 
 IiwaPlanManager::IiwaPlanManager(YAML::Node config)
-    : config_(std::move(config)) {
+    : config_(std::move(config)),
+      control_period_seconds_(config["control_period"].as<double>()) {
   double t_now_seconds =
       std::chrono::duration_cast<DoubleSeconds>(
           std::chrono::high_resolution_clock::now().time_since_epoch())
           .count();
   state_machine_ = std::make_unique<PlanManagerStateMachine>(t_now_seconds);
-  control_period_seconds_ = config_["control_period"].as<double>();
   plan_factory_ = std::make_unique<IiwaPlanFactory>(config_);
 
   // TODO(terry-suh): make another method here to check for errors in the config

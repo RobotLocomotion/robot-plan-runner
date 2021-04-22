@@ -10,9 +10,9 @@ using drake::systems::BasicVector;
 using Eigen::VectorXd;
 
 IiwaPlanManagerSystem::IiwaPlanManagerSystem(YAML::Node config)
-    : config_(std::move(config)) {
+    : config_(std::move(config)),
+      control_period_seconds_(config["control_period"].as<double>()) {
 
-  control_period_seconds_ = config_["control_period"].as<double>();
   plan_factory_ = std::make_unique<IiwaPlanFactory>(config_);
 
   // Initialize state machine.
