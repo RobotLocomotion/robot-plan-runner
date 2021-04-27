@@ -4,7 +4,7 @@
 #include <memory>
 #include <thread>
 
-#include "lcmt_test.hpp"
+#include "robot_plan_runner/lcmt_test.hpp"
 
 using namespace std;
 
