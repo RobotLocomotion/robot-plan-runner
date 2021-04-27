@@ -4,6 +4,8 @@
 #include <memory>
 #include <thread>
 
+#include "robot_plan_runner/lcmt_test.hpp"
+
 using namespace std;
 
 void f0() {
@@ -25,5 +27,6 @@ int main() {
 
   cout << (t_2 - t_1).count() << endl;
   cout << t_2d - t_1d << endl;
+  robot_plan_runner::lcmt_test test_msg;
   return 0;
 }

@@ -12,6 +12,9 @@ target_link_libraries(run_zmq_example cppzmq iiwa_plan_factory yaml-cpp)
 
 add_executable(sandbox sandbox.cc)
 target_link_libraries(sandbox drake::drake Threads::Threads)
+target_include_directories(sandbox PUBLIC ${LCM_INCLUDE_PATH})
+add_dependencies(sandbox robot-plan-runner-lcmtypes)
+
 
 add_executable(run_plan_manager run_plan_manager.cc)
 target_link_libraries(run_plan_manager iiwa_plan_manager yaml-cpp)
@@ -24,5 +27,5 @@ add_test(NAME import_all_test COMMAND
   "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/import_all_test.py"
 )
 set_tests_properties(import_all_test PROPERTIES
-  ENVIRONMENT "PYTHONPATH=${PYTHONPATH}"
+  ENVIRONMENT "PYTHONPATH=${PYTHONPATH}:${LCM_INCLUDE_PATH}"
 )
