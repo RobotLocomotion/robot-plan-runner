@@ -64,8 +64,11 @@ find_package(Threads REQUIRED)
 find_package(cppzmq REQUIRED)
 find_package(yaml-cpp REQUIRED yaml-cpp>0.5)
 
+set(LCM_INCLUDE_PATH ${CMAKE_BINARY_DIR}/robot-plan-runner-lcmtypes)
+
 get_filename_component(PYTHONPATH
   "${drake_DIR}/../../python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages"
+  "${LCM_INCLUDE_PATH}"
   REALPATH
 )
 
@@ -81,12 +84,11 @@ ExternalProject_Add(robot-plan-runner-lcmtypes
     -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_INSTALL_PREFIX}
     -DCMAKE_PREFIX_PATH:PATH=${CMAKE_PREFIX_PATH}
     -DCMAKE_VERBOSE_MAKEFILE:BOOL=${CMAKE_VERBOSE_MAKEFILE}
-  BINARY_DIR "${PROJECT_BINARY_DIR}/robot-plan-runner-lcmtypes"
+  BINARY_DIR "${LCM_INCLUDE_PATH}"
   BUILD_ALWAYS ON
   INSTALL_COMMAND :
 )
 
-set(LCM_INCLUDE_PATH ${CMAKE_BINARY_DIR}/robot-plan-runner-lcmtypes)
 
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 17)
