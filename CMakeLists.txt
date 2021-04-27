@@ -69,8 +69,7 @@ get_filename_component(PYTHONPATH
   REALPATH
 )
 
-find_package(lcm REQUIRED)
-include(${LCM_USE_FILE})
+set(LCM_INCLUDE_PATH ${PROJECT_SOURCE_DIR}/lcmtypes/robot_plan_runner)
 
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 17)
@@ -80,7 +79,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-add_subdirectory(lcmtypes)
 add_subdirectory(src)
 add_subdirectory(config)
 add_subdirectory(third_party)
