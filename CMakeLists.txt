@@ -31,7 +31,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 cmake_minimum_required(VERSION 3.10.2)
-project(robot_plan_runner)
+project(robot-plan-runner)
 
 # N.B. This is a temporary flag. It only really applies to Linux, as Mac
 # does not need X11.
@@ -67,6 +67,25 @@ find_package(yaml-cpp REQUIRED yaml-cpp>0.5)
 get_filename_component(PYTHONPATH
   "${drake_DIR}/../../python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages"
   REALPATH
+)
+
+include(ExternalProject)
+
+set(LCM_INCLUDE_PATH ${CMAKE_BINARY_DIR}/robot-plan-runner-lcmtypes)
+
+ExternalProject_Add(robot-plan-runner-lcmtypes
+  SOURCE_DIR "${PROJECT_SOURCE_DIR}/lcmtypes"
+  CMAKE_ARGS
+    -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
+    -DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}
+    -DCMAKE_CXX_FLAGS:STRING=${CMAKE_CXX_FLAGS}
+    -DCMAKE_EXE_LINKER_FLAGS:STRING=${CMAKE_EXE_LINKER_FLAGS}
+    -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_INSTALL_PREFIX}
+    -DCMAKE_PREFIX_PATH:PATH=${CMAKE_PREFIX_PATH}
+    -DCMAKE_VERBOSE_MAKEFILE:BOOL=${CMAKE_VERBOSE_MAKEFILE}
+  BINARY_DIR ${LCM_INCLUDE_PATH}
+  BUILD_ALWAYS ON
+  INSTALL_COMMAND :
 )
 
 set(CMAKE_CXX_EXTENSIONS OFF)
