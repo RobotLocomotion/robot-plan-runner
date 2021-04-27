@@ -27,6 +27,6 @@ int main() {
 
   cout << (t_2 - t_1).count() << endl;
   cout << t_2d - t_1d << endl;
-//  robot-plan-runner::lcmt_test test_msg;
+  robot_plan_runner::lcmt_test test_msg;
   return 0;
 }
