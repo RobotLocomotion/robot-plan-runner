@@ -4,8 +4,8 @@
 #include "drake_lcmtypes/drake/lcmt_iiwa_status.hpp"
 #include "drake_lcmtypes/drake/lcmt_robot_plan.hpp"
 
-#include "../plans/iiwa_plan_factory.h"
-#include "../state_machine/plan_manager_state_machine.h"
+#include "plans/iiwa_plan_factory.h"
+#include "state_machine/plan_manager_state_machine.h"
 
 class IiwaPlanManagerSystem : public drake::systems::LeafSystem<double> {
 public:

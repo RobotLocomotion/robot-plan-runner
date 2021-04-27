@@ -1,7 +1,7 @@
 #include "drake/common/value.h"
 #include <Eigen/Dense>
 
-#include "iiwa_plan_manager_system.h"
+#include "plan_manager_system/iiwa_plan_manager_system.h"
 
 using drake::lcmt_iiwa_command;
 using drake::lcmt_iiwa_status;

@@ -3,7 +3,7 @@
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/framework/diagram_builder.h"
 
-#include "iiwa_plan_manager_system.h"
+#include "plan_manager_system/iiwa_plan_manager_system.h"
 
 class IiwaPlanManagerHardwareInterface {
 public:

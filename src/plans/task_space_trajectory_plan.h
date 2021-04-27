@@ -10,7 +10,7 @@
 #include "drake/multibody/tree/multibody_tree.h"
 #include "drake/systems/framework/context.h"
 
-#include "plan_base.h"
+#include "plans/plan_base.h"
 
 class TaskSpaceTrajectoryPlan : public PlanBase {
 public:

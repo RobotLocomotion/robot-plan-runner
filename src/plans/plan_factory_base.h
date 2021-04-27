@@ -4,7 +4,7 @@
 #include "drake_lcmtypes/drake/lcmt_robot_plan.hpp"
 #include "drake_lcmtypes/drake/lcmt_robot_state.hpp"
 
-#include "plan_base.h"
+#include "plans/plan_base.h"
 
 class PlanFactory {
 public:
