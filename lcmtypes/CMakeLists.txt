@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.10.2)
 project(robot-plan-runner-lcm-types)
-include(CMakePackageConfigHelpers)
-include(GenerateExportHeader)
 
 find_package(lcm REQUIRED)
 find_package(PythonInterp REQUIRED)
