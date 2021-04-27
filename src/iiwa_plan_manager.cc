@@ -44,9 +44,10 @@ void IiwaPlanManager::Run() {
 
 void IiwaPlanManager::CalcCommandFromStatus() {
   lcm_status_command_ = std::make_unique<lcm::LCM>();
-  lcm_status_command_->subscribe(
+  auto sub = lcm_status_command_->subscribe(
       config_["lcm_status_channel"].as<std::string>(),
       &IiwaPlanManager::HandleIiwaStatus, this);
+  sub->setQueueCapacity(1);
   while (true) {
     // >0 if a message was handled,
     // 0 if the function timed out,

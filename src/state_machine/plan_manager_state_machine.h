@@ -7,7 +7,7 @@
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake_lcmtypes/drake/lcmt_iiwa_status.hpp"
 
-#include "../plans/plan_base.h"
+#include "plans/plan_base.h"
 
 // TODO: this is not used right now.
 enum PlanManagerStateTypes {

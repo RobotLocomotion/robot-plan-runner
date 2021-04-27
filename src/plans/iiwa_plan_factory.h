@@ -1,7 +1,7 @@
 #pragma once
-
-#include "plan_factory_base.h"
 #include <yaml-cpp/yaml.h>
+
+#include "plans/plan_factory_base.h"
 
 class IiwaPlanFactory : public PlanFactory {
 public:

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
-#include "plan_base.h"
+#include "plans/plan_base.h"
 
 class JointSpaceTrajectoryPlan : public PlanBase {
 public:
