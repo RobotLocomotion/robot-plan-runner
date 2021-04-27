@@ -11,7 +11,4 @@ lcm_wrap_types(
     lcmt_test.lcm)
 
 lcm_add_library(${PROJECT_NAME} CPP ${lcm_cpp_headers})
-lcm_install_headers(DESTINATION ${CMAKE_CURRENT_SOURCE_DIR} ${lcm_cpp_headers})
-lcm_install_python(DESTINATION ${CMAKE_CURRENT_SOURCE_DIR} ${lcm_python_sources})
-
 add_custom_target(GenLcmtypes ALL DEPENDS ${PROJECT_NAME}.sources)
