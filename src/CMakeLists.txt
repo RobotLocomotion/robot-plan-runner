@@ -27,5 +27,5 @@ add_test(NAME import_all_test COMMAND
   "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/import_all_test.py"
 )
 set_tests_properties(import_all_test PROPERTIES
-  ENVIRONMENT "PYTHONPATH=${PYTHONPATH}"
+  ENVIRONMENT "PYTHONPATH=${PYTHONPATH}:${LCM_INCLUDE_PATH}"
 )
