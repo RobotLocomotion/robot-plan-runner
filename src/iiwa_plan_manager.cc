@@ -1,7 +1,6 @@
 #include "drake_lcmtypes/drake/lcmt_iiwa_command.hpp"
 #include "drake_lcmtypes/drake/lcmt_robot_plan.hpp"
 #include "drake_lcmtypes/drake/lcmt_robot_state.hpp"
-#include <zmq.hpp>
 
 #include "iiwa_plan_manager.h"
 #include "plans/plan_base.h"
@@ -60,28 +59,45 @@ void IiwaPlanManager::CalcCommandFromStatus() {
 
 void IiwaPlanManager::PrintStateMachineStatus() const {
   using namespace std::chrono_literals;
+  TimePoint current_start_time = std::chrono::high_resolution_clock::now();
+  TimePoint next_start_time(current_start_time);
+  const auto interval = 1000ms;
+
   while (true) {
-    std::this_thread::sleep_for(1000ms);
-    double t_now_seconds =
-        std::chrono::duration_cast<DoubleSeconds>(
-            std::chrono::high_resolution_clock::now().time_since_epoch())
-            .count();
+    current_start_time = std::chrono::high_resolution_clock::now();
+    next_start_time = current_start_time + interval;
+    double t_now_seconds = std::chrono::duration_cast<DoubleSeconds>(
+                               current_start_time.time_since_epoch())
+                               .count();
     state_machine_->PrintCurrentState(t_now_seconds);
+    std::this_thread::sleep_until(next_start_time);
   }
 }
 
 void IiwaPlanManager::ReceivePlans() {
-  zmq::context_t ctx;
-  zmq::socket_t socket(ctx, ZMQ_REP);
-  socket.bind(config_["zmq_socket"].as<std::string>());
+  const std::string addr_prefix("tcp://*:");
+  zmq::socket_t plan_server(zmq_ctx_, zmq::socket_type::rep);
+  plan_server.bind(addr_prefix + config_["zmq_socket_plan"].as<std::string>());
+
+  zmq::socket_t status_publisher(zmq_ctx_, zmq::socket_type::pub);
+  status_publisher.bind(addr_prefix +
+                        config_["zmq_socket_status"].as<std::string>());
+
+  const auto channel_name_string =
+      config_["status_channel_name"].as<std::string>();
+
+  const auto status_update_period = std::chrono::milliseconds(static_cast<int>(
+      config_["staus_update_period_seconds"].as<double>() * 1000));
 
   while (true) {
     zmq::message_t plan_msg;
-    auto res = socket.recv(plan_msg, zmq::recv_flags::none);
+    // Blocks until a plan msg is received.
+    auto res = plan_server.recv(plan_msg, zmq::recv_flags::none);
+    DRAKE_THROW_UNLESS(res.has_value());
 
-    if (!res.has_value()) {
-      throw std::runtime_error("Receiving plan message failed.");
-    }
+    res = plan_server.send(zmq::str_buffer("plan_received"),
+                           zmq::send_flags::none);
+    DRAKE_THROW_UNLESS(res.has_value());
 
     drake::lcmt_robot_plan plan_lcm_msg;
     plan_lcm_msg.decode(plan_msg.data(), 0, plan_msg.size());
@@ -92,33 +108,43 @@ void IiwaPlanManager::ReceivePlans() {
       state_machine_->QueueNewPlan(std::move(plan));
     }
 
-    std::string reply_msg;
+    // Handle received plan.
+    TimePoint current_start_time = std::chrono::high_resolution_clock::now();
+    TimePoint next_start_time(current_start_time);
     while (true) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      current_start_time = std::chrono::high_resolution_clock::now();
+      next_start_time = current_start_time + status_update_period;
 
-      if (state_machine_->get_state_type() ==
-          PlanManagerStateTypes::kStateRunning) {
-        continue;
-      }
-      if (state_machine_->get_state_type() ==
-          PlanManagerStateTypes::kStateIdle) {
-        reply_msg = "success";
+      std::string reply_msg(channel_name_string + " ");
+      const auto current_state = state_machine_->get_state_type();
+      switch (current_state) {
+      case PlanManagerStateTypes::kStateRunning: {
+        reply_msg += "running";
         break;
       }
-      if (state_machine_->get_state_type() ==
-          PlanManagerStateTypes::kStateError) {
-        reply_msg = "error";
+      case PlanManagerStateTypes::kStateIdle: {
+        reply_msg += "success";
         break;
       }
-      if (state_machine_->get_state_type() ==
-          PlanManagerStateTypes::kStateInit) {
-        reply_msg = "discarded";
+      case PlanManagerStateTypes::kStateError: {
+        reply_msg += "error";
         break;
       }
+      case PlanManagerStateTypes::kStateInit: {
+        reply_msg += "discarded";
+        break;
+      }
+      }
+
+      zmq::message_t reply(reply_msg.size());
+      memcpy(reply.data(), reply_msg.data(), reply_msg.size());
+      status_publisher.send(reply, zmq::send_flags::none);
+
+      if (current_state != PlanManagerStateTypes::kStateRunning) {
+        break;
+      }
+      std::this_thread::sleep_until(next_start_time);
     }
-    zmq::message_t reply(reply_msg.size());
-    memcpy(reply.data(), reply_msg.data(), reply_msg.size());
-    socket.send(reply, zmq::send_flags::none);
   }
 }
 

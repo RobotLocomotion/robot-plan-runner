@@ -2,7 +2,11 @@
 lcm_status_channel: "IIWA_STATUS"
 lcm_command_channel: "IIWA_COMMAND"
 lcm_plan_channel: "ROBOT_PLAN"
-zmq_socket: "tcp://*:5555"
+zmq_socket_plan: "5555"
+zmq_socket_cancel: "5556"
+zmq_socket_status: "5557"  # pub-sub for feedback status and result.
+status_channel_name: "PLAN_STATUS"
+staus_update_period_seconds: 0.01
 
 # Robot Parameters
 robot_sdf_path: "drake/manipulation/models/iiwa_description/iiwa7/iiwa7_no_collision.sdf"

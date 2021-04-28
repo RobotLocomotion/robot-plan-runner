@@ -11,7 +11,7 @@ add_executable(run_zmq_example run_zmq_example.cc)
 target_link_libraries(run_zmq_example cppzmq iiwa_plan_factory yaml-cpp)
 
 add_executable(sandbox sandbox.cc)
-target_link_libraries(sandbox drake::drake Threads::Threads)
+target_link_libraries(sandbox drake::drake Threads::Threads cppzmq)
 target_include_directories(sandbox PUBLIC ${LCM_INCLUDE_PATH})
 add_dependencies(sandbox robot-plan-runner-lcmtypes)
 
