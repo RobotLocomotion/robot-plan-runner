@@ -170,8 +170,8 @@ void IiwaPlanManager::HandleIiwaStatus(
     std::lock_guard<std::mutex> lock(mutex_state_machine_);
 
     // Get current plan.
-    state_machine_->ReceiveNewStatusMsg(*status_msg);
     plan = state_machine_->GetCurrentPlan(t_now, *status_msg);
+    state_machine_->ReceiveNewStatusMsg(*status_msg);
 
     // Compute command.
     if (plan) {
