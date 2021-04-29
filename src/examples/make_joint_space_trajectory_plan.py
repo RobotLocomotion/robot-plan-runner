@@ -7,8 +7,9 @@ from drake import lcmt_robot_plan
 
 #%%
 t_knots = np.array([0, 10])
+q0 = np.array([0, 0.6, 0, -1.75, 0, 1, 0])
 q_knots1 = np.zeros((2, 7))
-q_knots1[:, ] = [0, 0.6, 0, -1.75, 0, 1, 0]
+q_knots1[:, ] = q0
 q_knots1[1, 0] += 1
 
 q_knots2 = np.zeros((2, 7))

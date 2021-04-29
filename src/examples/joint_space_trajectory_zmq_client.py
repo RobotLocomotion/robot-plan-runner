@@ -7,7 +7,29 @@ import lcm
 from make_joint_space_trajectory_plan import *
 from drake import lcmt_iiwa_status
 
+
 #%% zmq client.
+class IiwaPositionGetter:
+    def __init__(self):
+        self.lc = lcm.LCM()
+        sub = self.lc.subscribe("IIWA_STATUS", self.sub_callback)
+        sub.set_queue_capacity(1)
+        self.iiwa_position_measured = None
+        self.t1 = threading.Thread(target=self.update_iiwa_position_measured)
+        self.t1.start()
+
+    def sub_callback(self, channel, data):
+        iiwa_status_msg = lcmt_iiwa_status.decode(data)
+        self.iiwa_position_measured = iiwa_status_msg.joint_position_measured
+
+    def update_iiwa_position_measured(self):
+        while True:
+            self.lc.handle()
+
+    def get_iiwa_position_measured(self):
+        return np.array(self.iiwa_position_measured)
+
+
 class PlanManagerZmqClient:
     def __init__(self):
         self.context = zmq.Context()
@@ -29,6 +51,8 @@ class PlanManagerZmqClient:
         self.abort_client = self.context.socket(zmq.REQ)
         self.abort_client.connect("tcp://localhost:5556")
 
+        self.iiwa_position_getter = IiwaPositionGetter()
+
     def subscribe_to_status(self):
         while True:
             s = self.status_subscriber.recv_string()
@@ -45,6 +69,7 @@ class PlanManagerZmqClient:
     def wait_for_result(self):
         while True:
             if self.status != "running":
+                print("wait for result status", self.status)
                 break
             time.sleep(0.01)
         print("Final status:", self.status)
@@ -57,37 +82,28 @@ class PlanManagerZmqClient:
 
 zmq_client = PlanManagerZmqClient()
 #%%
-zmq_client.make_and_send_plan([0, 6], q_knots1)
-print("pretending to do some work")
-time.sleep(3.0)
-# zmq_client.abort()
-zmq_client.wait_for_result()
-print("plan finished.")
+duration = 5.0
 
-#%%
-# test waiting longer than plan duration.
-zmq_client.make_and_send_plan([0, 5], q_knots2)
-print("pretending to do some work")
-time.sleep(6.0)
-print("waiting for result")
-zmq_client.wait_for_result()
+# TODO: support WaitForServer, which blocks until the server is in state IDLE.
+while True:
+    print("plan sent")
+    zmq_client.make_and_send_plan([0, duration], q_knots1)
+    print("pretending to do some work")
+    stop_duration = np.random.rand() * duration
+    time.sleep(stop_duration)
+    zmq_client.abort()
+    print("plan aborted after t = {}s".format(stop_duration))
 
+    # # get current robot position.
+    q_now = zmq_client.iiwa_position_getter.get_iiwa_position_measured()
+    q_knots_return = np.vstack([q_now, q0])
+    zmq_client.make_and_send_plan([0, 6], q_knots_return)
+    print("Returning to q0.")
+    # TODO: sometimes, wait_for_result would return the status of the
+    #  previous plan. We may need to return a signature of the plan together
+    #  with the stauts in the PLAN_STATUS channel.
+    zmq_client.wait_for_result()
+    print("returned to q0.")
+    print("------------------------------------------------------")
 
-#%% lcm client.
-
-#%%
-
-class IiwaPositionGetter:
-    def __init__(self):
-        self.lc = lcm.LCM()
-        self.lc.subscribe("IIWA_STATUS", self.sub_callback)
-        self.iiwa_position_measured = None
-
-    def sub_callback(self, channel, data):
-        iiwa_status_msg = lcmt_iiwa_status.decode(data)
-        self.iiwa_position_measured = iiwa_status_msg.joint_position_measured
-
-    def get_iiwa_position_measured(self):
-        self.lc.handle()
-        return self.iiwa_position_measured
 

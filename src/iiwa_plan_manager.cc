@@ -175,8 +175,8 @@ void IiwaPlanManager::HandleIiwaStatus(
 
     // Compute command.
     if (plan) {
-      plan->Step(s, control_period_seconds_,
-                 state_machine_->GetCurrentPlanUpTime(t_now), &c);
+      const double t_plan = state_machine_->GetCurrentPlanUpTime(t_now);
+      plan->Step(s, control_period_seconds_, t_plan, &c);
     } else if (state_machine_->get_state_type() ==
                PlanManagerStateTypes::kStateIdle) {
       c.q_cmd = state_machine_->get_iiwa_position_command_idle();
