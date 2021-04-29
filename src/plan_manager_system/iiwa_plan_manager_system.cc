@@ -59,17 +59,15 @@ void IiwaPlanManagerSystem::CalcIiwaCommand(
     state_machine_->QueueNewPlan(std::move(plan));
     last_robot_plan_utime_ = msg_robot_plan.utime;
   }
-
+  
   // Handle new iiwa status messages.
   if (msg_iiwa_status.num_joints == 0) {
     return;
-  } else {
-    state_machine_->ReceiveNewStatusMsg(msg_iiwa_status);
   }
 
-  // Compute iiwa_command.
   const double t_now = context.get_time();
   auto plan = state_machine_->GetCurrentPlan(t_now, msg_iiwa_status);
+  state_machine_->ReceiveNewStatusMsg(msg_iiwa_status);
 
   State s(
       Eigen::Map<const VectorXd>(msg_iiwa_status.joint_position_measured.data(),
@@ -82,8 +80,8 @@ void IiwaPlanManagerSystem::CalcIiwaCommand(
   Command c;
 
   if (plan) {
-    plan->Step(s, control_period_seconds_,
-               state_machine_->GetCurrentPlanUpTime(t_now), &c);
+    const double t_plan = state_machine_->GetCurrentPlanUpTime(t_now);
+    plan->Step(s, control_period_seconds_, t_plan, &c);
   } else if (state_machine_->get_state_type() ==
              PlanManagerStateTypes::kStateIdle) {
     c.q_cmd = state_machine_->get_iiwa_position_command_idle();
