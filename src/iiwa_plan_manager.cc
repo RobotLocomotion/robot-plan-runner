@@ -39,6 +39,7 @@ void IiwaPlanManager::Run() {
   threads_["print_status"] =
       std::thread(&IiwaPlanManager::PrintStateMachineStatus, this);
   threads_["receive_plans"] = std::thread(&IiwaPlanManager::ReceivePlans, this);
+  threads_["cancel_plans"] = std::thread(&IiwaPlanManager::AbortPlans, this);
 }
 
 void IiwaPlanManager::CalcCommandFromStatus() {
@@ -123,7 +124,9 @@ void IiwaPlanManager::ReceivePlans() {
         break;
       }
       case PlanManagerStateTypes::kStateIdle: {
-        reply_msg += "success";
+        // TODO: aborted plans and successfully finished plans are not
+        //  distinguished.
+        reply_msg += "finished";
         break;
       }
       case PlanManagerStateTypes::kStateError: {
@@ -151,45 +154,42 @@ void IiwaPlanManager::ReceivePlans() {
 void IiwaPlanManager::HandleIiwaStatus(
     const lcm::ReceiveBuffer *, const std::string &channel,
     const drake::lcmt_iiwa_status *status_msg) {
-  {
-    std::lock_guard<std::mutex> lock(mutex_iiwa_status_);
-    iiwa_status_msg_ = *status_msg;
-  }
   const PlanBase *plan;
   auto t_now = std::chrono::high_resolution_clock::now();
-  {
-    std::lock_guard<std::mutex> lock(mutex_state_machine_);
-    state_machine_->ReceiveNewStatusMsg(*status_msg);
-    plan = state_machine_->GetCurrentPlan(t_now, *status_msg);
-  }
-
-  const int num_joints = iiwa_status_msg_.num_joints;
-  // Compute command.
-  State s(Eigen::Map<VectorXd>(iiwa_status_msg_.joint_position_measured.data(),
-                               num_joints),
-          Eigen::Map<VectorXd>(iiwa_status_msg_.joint_velocity_estimated.data(),
-                               num_joints),
-          Eigen::Map<VectorXd>(iiwa_status_msg_.joint_torque_external.data(),
-                               num_joints));
+  const int num_joints = (*status_msg).num_joints;
+  State s(Eigen::Map<const VectorXd>(
+              (*status_msg).joint_position_measured.data(), num_joints),
+          Eigen::Map<const VectorXd>(
+              (*status_msg).joint_velocity_estimated.data(), num_joints),
+          Eigen::Map<const VectorXd>((*status_msg).joint_torque_external.data(),
+                                     num_joints));
   Command c;
-  if (plan) {
-    plan->Step(s, control_period_seconds_,
-               state_machine_->GetCurrentPlanUpTime(t_now), &c);
-  } else if (state_machine_->get_state_type() ==
-             PlanManagerStateTypes::kStateIdle) {
-    c.q_cmd = state_machine_->get_iiwa_position_command_idle();
-    c.tau_cmd = Eigen::VectorXd::Zero(num_joints);
-  } else {
-    // No commands are sent in state INIT or ERROR.
-    return;
-  }
-
-  // Check command for error.
   bool command_has_error;
   {
+    // Lock state machine.
     std::lock_guard<std::mutex> lock(mutex_state_machine_);
+
+    // Get current plan.
+    state_machine_->ReceiveNewStatusMsg(*status_msg);
+    plan = state_machine_->GetCurrentPlan(t_now, *status_msg);
+
+    // Compute command.
+    if (plan) {
+      plan->Step(s, control_period_seconds_,
+                 state_machine_->GetCurrentPlanUpTime(t_now), &c);
+    } else if (state_machine_->get_state_type() ==
+               PlanManagerStateTypes::kStateIdle) {
+      c.q_cmd = state_machine_->get_iiwa_position_command_idle();
+      c.tau_cmd = Eigen::VectorXd::Zero(num_joints);
+    } else {
+      // No commands are sent in state INIT or ERROR.
+      return;
+    }
+
+    // Check command for error.
     command_has_error = state_machine_->CommandHasError(s, c);
   }
+
   if (!command_has_error) {
     drake::lcmt_iiwa_command cmd_msg;
     cmd_msg.num_joints = num_joints;
@@ -201,5 +201,34 @@ void IiwaPlanManager::HandleIiwaStatus(
     }
     lcm_status_command_->publish(
         config_["lcm_command_channel"].as<std::string>(), &cmd_msg);
+  }
+}
+
+void IiwaPlanManager::AbortPlans() {
+  zmq::socket_t abort_server(zmq_ctx_, zmq::socket_type::rep);
+  abort_server.bind("tcp://*:" + config_["zmq_socket_abort"].as<std::string>());
+
+  zmq::message_t msg;
+  while (true) {
+    auto res = abort_server.recv(msg, zmq::recv_flags::none);
+    DRAKE_THROW_UNLESS(res.has_value());
+
+    {
+      std::lock_guard<std::mutex> lock(mutex_state_machine_);
+      state_machine_->AbortAllPlans();
+    }
+
+    res = abort_server.send(zmq::str_buffer("plans_aborted"),
+                            zmq::send_flags::none);
+    DRAKE_THROW_UNLESS(res.has_value());
+
+    double t_now =
+        std::chrono::duration_cast<DoubleSeconds>(
+            std::chrono::high_resolution_clock::now().time_since_epoch())
+            .count();
+    auto t_up = state_machine_->get_state_machine_up_time(t_now);
+
+    cout << "t = " << t_up << ". [INFO]: all plans have been aborted. "
+         << "Returning to [IDLE]." << endl;
   }
 }

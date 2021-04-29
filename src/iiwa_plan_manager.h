@@ -31,8 +31,6 @@ private:
 
   // Iiwa status + command thread.
   std::unique_ptr<lcm::LCM> lcm_status_command_;
-  drake::lcmt_iiwa_status iiwa_status_msg_;
-  std::mutex mutex_iiwa_status_;
   void CalcCommandFromStatus();
   void HandleIiwaStatus(const lcm::ReceiveBuffer *rbuf,
                         const std::string &channel,
@@ -43,4 +41,7 @@ private:
 
   // Robot plans thread.
   void ReceivePlans();
+
+  // Cancel plans thread.
+  void AbortPlans();
 };

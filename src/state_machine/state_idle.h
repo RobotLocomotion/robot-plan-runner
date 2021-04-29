@@ -14,7 +14,7 @@ public:
 
   void ReceiveNewStatusMsg(PlanManagerStateMachine *state_machine,
                            const drake::lcmt_iiwa_status &msg_iiwa_status)
-                           const override{};
+                           const override;
 
   void QueueNewPlan(PlanManagerStateMachine *state_machine,
                     std::unique_ptr<PlanBase> plan) override;

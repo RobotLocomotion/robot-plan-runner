@@ -29,6 +29,11 @@ public:
       PlanManagerStateMachine *state_machine,
       const drake::lcmt_iiwa_status &msg_iiwa_status) const override{};
 
+  void AbortAllPlans(PlanManagerStateMachine *state_machine) override {
+    throw std::runtime_error(
+        "AbortAllPlans should not be called in state " + get_state_name());
+  };
+
 private:
   StateError() : PlanManagerStateBase("ERROR"){};
   static PlanManagerStateBase *instance_;
