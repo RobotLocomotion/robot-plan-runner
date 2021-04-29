@@ -1,11 +1,9 @@
 import time
 
 import numpy as np
-import zmq
-import lcm
-
 from drake import lcmt_robot_state
 from drake import lcmt_robot_plan
+
 
 #%%
 t_knots = np.array([0, 10])
@@ -40,30 +38,3 @@ def calc_plan_msg(t_knots, q_knots):
         msg_plan.plan.append(msg_state)
 
     return msg_plan
-
-
-#%% zmq client.
-context = zmq.Context()
-socket = context.socket(zmq.REQ)
-socket.connect("tcp://localhost:5555")
-
-#%% send msg 1 via zmq.
-socket.send(calc_plan_msg(t_knots, q_knots1).encode())
-print("lcm msg sent")
-msg = socket.recv()
-print(msg)
-
-#%% send msg 2 via zmq.
-socket.send(calc_plan_msg(t_knots, q_knots2).encode())
-print("lcm msg sent")
-msg = socket.recv()
-print(msg)
-
-#%% lcm client.
-lc = lcm.LCM()
-
-#%% send msg 1 via lcm.
-lc.publish("ROBOT_PLAN", calc_plan_msg(t_knots, q_knots1).encode())
-
-#%% send msg 2 via lcm.
-lc.publish("ROBOT_PLAN", calc_plan_msg(t_knots, q_knots2).encode())
