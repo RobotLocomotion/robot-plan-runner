@@ -109,8 +109,11 @@ zmq_client.make_and_send_plan([0, duration], q_knots1)
 time.sleep(1.0)
 zmq_client.wait_for_plan_to_finish()
 
-
 zmq_client.make_and_send_plan([0, duration], q_knots2)
+time.sleep(1.0)
+# Calling wait for plan to finish immediately after calling abort should
+#  return FINISHED.
+zmq_client.abort()
 zmq_client.wait_for_plan_to_finish()
 
 #%%

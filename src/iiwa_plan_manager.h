@@ -40,7 +40,7 @@ private:
   void PrintStateMachineStatus() const;
 
   // Robot plans thread.
-  void ReceivePlans();
+  void ReceivePlanAndPublishPlanStatus();
 
   // Cancel plans thread.
   void AbortPlans();

@@ -10,10 +10,10 @@
 #include "robot_plan_runner/lcmt_plan_status_constants.hpp"
 
 using Eigen::VectorXd;
-using std::cout;
-using std::endl;
 using robot_plan_runner::lcmt_plan_status;
 using robot_plan_runner::lcmt_plan_status_constants;
+using std::cout;
+using std::endl;
 
 IiwaPlanManager::IiwaPlanManager(YAML::Node config)
     : config_(std::move(config)),
@@ -44,7 +44,8 @@ void IiwaPlanManager::Run() {
       std::thread(&IiwaPlanManager::CalcCommandFromStatus, this);
   threads_["print_status"] =
       std::thread(&IiwaPlanManager::PrintStateMachineStatus, this);
-  threads_["receive_plans"] = std::thread(&IiwaPlanManager::ReceivePlans, this);
+  threads_["receive_plans"] =
+      std::thread(&IiwaPlanManager::ReceivePlanAndPublishPlanStatus, this);
   threads_["cancel_plans"] = std::thread(&IiwaPlanManager::AbortPlans, this);
 }
 
@@ -84,8 +85,8 @@ void IiwaPlanManager::PrintStateMachineStatus() const {
 // Constructs a vector of bytes consisting of the channel name and the
 // encoded LCM message separated by a space:
 //  (channel_name, ' ', encoded LCM message)
-std::vector<uint8_t> PrependLcmMsgWithChannel(
-    const std::string& channel_name, const lcmt_plan_status& msg) {
+std::vector<uint8_t> PrependLcmMsgWithChannel(const std::string &channel_name,
+                                              const lcmt_plan_status &msg) {
   const int data_len = msg.getEncodedSize();
   const int channel_len = channel_name.size();
 
@@ -99,7 +100,7 @@ std::vector<uint8_t> PrependLcmMsgWithChannel(
   return msg_full_bytes;
 }
 
-void IiwaPlanManager::ReceivePlans() {
+void IiwaPlanManager::ReceivePlanAndPublishPlanStatus() {
   const std::string addr_prefix("tcp://*:");
   zmq::socket_t plan_server(zmq_ctx_, zmq::socket_type::rep);
   plan_server.bind(addr_prefix + config_["zmq_socket_plan"].as<std::string>());
@@ -165,8 +166,8 @@ void IiwaPlanManager::ReceivePlans() {
         break;
       }
       }
-      auto reply_msg = PrependLcmMsgWithChannel(channel_name_string,
-                                                msg_plan_status);
+      auto reply_msg =
+          PrependLcmMsgWithChannel(channel_name_string, msg_plan_status);
       zmq::message_t reply(reply_msg.begin(), reply_msg.end());
       status_publisher.send(reply, zmq::send_flags::none);
 
