@@ -1,7 +1,0 @@
-package robot_plan_runner;
-
-struct lcmt_test
-{
-	int64_t timestamp;
-	double number;
-}

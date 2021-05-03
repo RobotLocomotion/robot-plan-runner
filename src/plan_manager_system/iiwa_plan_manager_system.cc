@@ -59,7 +59,7 @@ void IiwaPlanManagerSystem::CalcIiwaCommand(
     state_machine_->QueueNewPlan(std::move(plan));
     last_robot_plan_utime_ = msg_robot_plan.utime;
   }
-  
+
   // Handle new iiwa status messages.
   if (msg_iiwa_status.num_joints == 0) {
     return;

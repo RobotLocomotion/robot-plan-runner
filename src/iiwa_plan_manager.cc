@@ -1,13 +1,19 @@
+#include <vector>
+
 #include "drake_lcmtypes/drake/lcmt_iiwa_command.hpp"
 #include "drake_lcmtypes/drake/lcmt_robot_plan.hpp"
 #include "drake_lcmtypes/drake/lcmt_robot_state.hpp"
 
 #include "iiwa_plan_manager.h"
 #include "plans/plan_base.h"
+#include "robot_plan_runner/lcmt_plan_status.hpp"
+#include "robot_plan_runner/lcmt_plan_status_constants.hpp"
 
 using Eigen::VectorXd;
 using std::cout;
 using std::endl;
+using robot_plan_runner::lcmt_plan_status;
+using robot_plan_runner::lcmt_plan_status_constants;
 
 IiwaPlanManager::IiwaPlanManager(YAML::Node config)
     : config_(std::move(config)),
@@ -75,6 +81,24 @@ void IiwaPlanManager::PrintStateMachineStatus() const {
   }
 }
 
+// Constructs a vector of bytes consisting of the channel name and the
+// encoded LCM message separated by a space:
+//  (channel_name, ' ', encoded LCM message)
+std::vector<uint8_t> PrependLcmMsgWithChannel(
+    const std::string& channel_name, const lcmt_plan_status& msg) {
+  const int data_len = msg.getEncodedSize();
+  const int channel_len = channel_name.size();
+
+  std::vector<uint8_t> msg_full_bytes(data_len + channel_len + 1);
+  for (size_t i = 0; i < channel_len; i++) {
+    msg_full_bytes[i] = channel_name[i];
+  }
+  msg_full_bytes[channel_len] = ' ';
+  msg.encode(msg_full_bytes.data(), channel_len + 1, data_len);
+
+  return msg_full_bytes;
+}
+
 void IiwaPlanManager::ReceivePlans() {
   const std::string addr_prefix("tcp://*:");
   zmq::socket_t plan_server(zmq_ctx_, zmq::socket_type::rep);
@@ -110,37 +134,40 @@ void IiwaPlanManager::ReceivePlans() {
     }
 
     // Handle received plan.
+    lcmt_plan_status msg_plan_status;
+    msg_plan_status.utime = plan_lcm_msg.utime;
     TimePoint current_start_time = std::chrono::high_resolution_clock::now();
     TimePoint next_start_time(current_start_time);
     while (true) {
       current_start_time = std::chrono::high_resolution_clock::now();
       next_start_time = current_start_time + status_update_period;
 
-      std::string reply_msg(channel_name_string + " ");
       const auto current_state = state_machine_->get_state_type();
       switch (current_state) {
       case PlanManagerStateTypes::kStateRunning: {
-        reply_msg += "running";
+        msg_plan_status.status = lcmt_plan_status_constants::RUNNING;
         break;
       }
       case PlanManagerStateTypes::kStateIdle: {
         // TODO: aborted plans and successfully finished plans are not
-        //  distinguished.
-        reply_msg += "finished";
+        //  distinguished, both are designated "FINISHED".
+        //  On the other hand, if the client calls abort, it should know that
+        //  the plan doesn't finish normally?
+        msg_plan_status.status = lcmt_plan_status_constants::FINISHED;
         break;
       }
       case PlanManagerStateTypes::kStateError: {
-        reply_msg += "error";
+        msg_plan_status.status = lcmt_plan_status_constants::ERROR;
         break;
       }
       case PlanManagerStateTypes::kStateInit: {
-        reply_msg += "discarded";
+        msg_plan_status.status = lcmt_plan_status_constants::DISCARDED;
         break;
       }
       }
-
-      zmq::message_t reply(reply_msg.size());
-      memcpy(reply.data(), reply_msg.data(), reply_msg.size());
+      auto reply_msg = PrependLcmMsgWithChannel(channel_name_string,
+                                                msg_plan_status);
+      zmq::message_t reply(reply_msg.begin(), reply_msg.end());
       status_publisher.send(reply, zmq::send_flags::none);
 
       if (current_state != PlanManagerStateTypes::kStateRunning) {

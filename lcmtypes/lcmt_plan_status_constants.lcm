@@ -1,0 +1,6 @@
+package robot_plan_runner;
+
+struct lcmt_plan_status_constants
+{
+    const int32_t RUNNING=0, DISCARDED=1, ERROR=2, FINISHED=3;
+}

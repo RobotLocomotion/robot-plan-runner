@@ -32,4 +32,4 @@ Provides an example of importing all modules available in pydrake.
 """
 
 import pydrake.all
-from robot_plan_runner import lcmt_test
+from robot_plan_runner import lcmt_plan_status, lcmt_plan_status_constants
