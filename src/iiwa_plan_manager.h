@@ -37,11 +37,11 @@ private:
                         const drake::lcmt_iiwa_status *status_msg);
 
   // Printing thread.
-  void PrintStateMachineStatus() const;
+  [[noreturn]] void PrintStateMachineStatus() const;
 
   // Robot plans thread.
-  void ReceivePlanAndPublishPlanStatus();
+  [[noreturn]] void ReceivePlanAndPublishPlanStatus();
 
   // Cancel plans thread.
-  void AbortPlans();
+  [[noreturn]] void AbortPlans();
 };

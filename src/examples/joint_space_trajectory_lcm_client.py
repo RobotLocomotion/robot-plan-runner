@@ -1,7 +1,9 @@
 import lcm
 from make_joint_space_trajectory_plan import *
 
-#%% lcm client.
+# This script shows how to send plan messages over LCM to
+#  IiwaPlanManagerSystem, the drake systems wrapper of IiwaPlanManager.
+
 lc = lcm.LCM()
 
 #%% send msg 1 via lcm.

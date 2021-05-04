@@ -27,7 +27,7 @@ IiwaPlanManager::IiwaPlanManager(YAML::Node config)
   plan_factory_ = std::make_unique<IiwaPlanFactory>(config_);
 
   // TODO(terry-suh): make another method here to check for errors in the config
-  // file. are all the required fields there?
+  //  file. are all the required fields there?
 }
 
 IiwaPlanManager::~IiwaPlanManager() {
@@ -65,7 +65,7 @@ void IiwaPlanManager::CalcCommandFromStatus() {
   }
 }
 
-void IiwaPlanManager::PrintStateMachineStatus() const {
+[[noreturn]] void IiwaPlanManager::PrintStateMachineStatus() const {
   using namespace std::chrono_literals;
   TimePoint current_start_time = std::chrono::high_resolution_clock::now();
   TimePoint next_start_time(current_start_time);
@@ -100,7 +100,7 @@ std::vector<uint8_t> PrependLcmMsgWithChannel(const std::string &channel_name,
   return msg_full_bytes;
 }
 
-void IiwaPlanManager::ReceivePlanAndPublishPlanStatus() {
+[[noreturn]] void IiwaPlanManager::ReceivePlanAndPublishPlanStatus() {
   const std::string addr_prefix("tcp://*:");
   zmq::socket_t plan_server(zmq_ctx_, zmq::socket_type::rep);
   plan_server.bind(addr_prefix + config_["zmq_socket_plan"].as<std::string>());
@@ -119,11 +119,8 @@ void IiwaPlanManager::ReceivePlanAndPublishPlanStatus() {
     zmq::message_t plan_msg;
     // Blocks until a plan msg is received.
     auto res = plan_server.recv(plan_msg, zmq::recv_flags::none);
-    DRAKE_THROW_UNLESS(res.has_value());
-
     res = plan_server.send(zmq::str_buffer("plan_received"),
                            zmq::send_flags::none);
-    DRAKE_THROW_UNLESS(res.has_value());
 
     drake::lcmt_robot_plan plan_lcm_msg;
     plan_lcm_msg.decode(plan_msg.data(), 0, plan_msg.size());
@@ -135,7 +132,7 @@ void IiwaPlanManager::ReceivePlanAndPublishPlanStatus() {
     }
 
     // Handle received plan.
-    lcmt_plan_status msg_plan_status;
+    lcmt_plan_status msg_plan_status{};
     msg_plan_status.utime = plan_lcm_msg.utime;
     TimePoint current_start_time = std::chrono::high_resolution_clock::now();
     TimePoint next_start_time(current_start_time);
@@ -232,14 +229,13 @@ void IiwaPlanManager::HandleIiwaStatus(
   }
 }
 
-void IiwaPlanManager::AbortPlans() {
+[[noreturn]] void IiwaPlanManager::AbortPlans() {
   zmq::socket_t abort_server(zmq_ctx_, zmq::socket_type::rep);
   abort_server.bind("tcp://*:" + config_["zmq_socket_abort"].as<std::string>());
 
   zmq::message_t msg;
   while (true) {
     auto res = abort_server.recv(msg, zmq::recv_flags::none);
-    DRAKE_THROW_UNLESS(res.has_value());
 
     {
       std::lock_guard<std::mutex> lock(mutex_state_machine_);
@@ -248,7 +244,6 @@ void IiwaPlanManager::AbortPlans() {
 
     res = abort_server.send(zmq::str_buffer("plans_aborted"),
                             zmq::send_flags::none);
-    DRAKE_THROW_UNLESS(res.has_value());
 
     double t_now =
         std::chrono::duration_cast<DoubleSeconds>(
