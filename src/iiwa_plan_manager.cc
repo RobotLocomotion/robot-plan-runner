@@ -119,8 +119,6 @@ std::vector<uint8_t> PrependLcmMsgWithChannel(const std::string &channel_name,
     zmq::message_t plan_msg;
     // Blocks until a plan msg is received.
     auto res = plan_server.recv(plan_msg, zmq::recv_flags::none);
-    res = plan_server.send(zmq::str_buffer("plan_received"),
-                           zmq::send_flags::none);
 
     drake::lcmt_robot_plan plan_lcm_msg;
     plan_lcm_msg.decode(plan_msg.data(), 0, plan_msg.size());
@@ -130,6 +128,12 @@ std::vector<uint8_t> PrependLcmMsgWithChannel(const std::string &channel_name,
       std::lock_guard<std::mutex> lock(mutex_state_machine_);
       state_machine_->QueueNewPlan(std::move(plan));
     }
+
+    // TODO: have QueueNewPlan return whether the plan is successfully added
+    //  or just discarded (due to state machine being in a state other than
+    //  IDLE).
+    res = plan_server.send(zmq::str_buffer("plan_received"),
+                           zmq::send_flags::none);
 
     // Handle received plan.
     lcmt_plan_status msg_plan_status{};
