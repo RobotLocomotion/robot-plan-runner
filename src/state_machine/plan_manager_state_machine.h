@@ -51,6 +51,9 @@ public:
   //    This threshold is decided by a parameter in the config file.
   bool CommandHasError(const State &state, const Command &cmd);
 
+  // Empties the plans_ queue and sets the state to IDLE.
+  void AbortAllPlans();
+
   // Returns true if an IIWA_STATUS message has been received.
   [[nodiscard]] bool has_received_status_msg() const;
 
@@ -79,8 +82,16 @@ public:
   SetIiwaPositionCommandIdle(const drake::lcmt_iiwa_status &msg_iiwa_status);
 
   [[nodiscard]] const Eigen::VectorXd &get_iiwa_position_command_idle() const {
-    return iiwa_position_command_idle_;
+    return *iiwa_position_command_idle_;
   };
+
+  void reset_iiwa_position_command_idle() {
+    iiwa_position_command_idle_.reset();
+  }
+
+  [[nodiscard]] bool is_iiwa_position_command_idle_set() const {
+    return iiwa_position_command_idle_ != nullptr;
+  }
 
   [[nodiscard]] double get_state_machine_up_time(double t_now_seconds) const;
 
@@ -112,7 +123,7 @@ private:
   const double state_machine_start_time_seconds_;
 
   // The iiwa command to send in state IDLE.
-  Eigen::VectorXd iiwa_position_command_idle_;
+  std::unique_ptr<Eigen::VectorXd> iiwa_position_command_idle_{nullptr};
 };
 
 class PlanManagerStateBase {
@@ -130,6 +141,9 @@ public:
   virtual bool CommandHasError(const State &state, const Command &cmd,
                                PlanManagerStateMachine *state_machine,
                                const double q_threshold);
+
+  virtual void AbortAllPlans(PlanManagerStateMachine *state_machine);
+
   // Pure virtual functions.
   [[nodiscard]] virtual PlanManagerStateTypes get_state_type() const = 0;
 
@@ -229,4 +243,8 @@ inline bool PlanManagerStateMachine::CommandHasError(const State &state,
                                                      const Command &cmd) {
   return state_->CommandHasError(state, cmd, this,
                                  config_["q_threshold"].as<double>());
+}
+
+inline void PlanManagerStateMachine::AbortAllPlans() {
+  state_->AbortAllPlans(this);
 }

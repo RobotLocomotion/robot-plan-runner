@@ -3,6 +3,7 @@
 #include <thread>
 #include <unordered_map>
 #include <yaml-cpp/yaml.h>
+#include <zmq.hpp>
 
 #include "drake_lcmtypes/drake/lcmt_iiwa_status.hpp"
 #include "lcm/lcm-cpp.hpp"
@@ -24,19 +25,23 @@ private:
   std::unique_ptr<IiwaPlanFactory> plan_factory_;
 
   const YAML::Node config_;
+  // This context is used in multiple threads. zmq context should be
+  // thread-safe, according to their documentation...
+  zmq::context_t zmq_ctx_;
 
   // Iiwa status + command thread.
   std::unique_ptr<lcm::LCM> lcm_status_command_;
-  drake::lcmt_iiwa_status iiwa_status_msg_;
-  std::mutex mutex_iiwa_status_;
   void CalcCommandFromStatus();
   void HandleIiwaStatus(const lcm::ReceiveBuffer *rbuf,
                         const std::string &channel,
                         const drake::lcmt_iiwa_status *status_msg);
 
   // Printing thread.
-  void PrintStateMachineStatus() const;
+  [[noreturn]] void PrintStateMachineStatus() const;
 
   // Robot plans thread.
-  void ReceivePlans();
+  [[noreturn]] void ReceivePlanAndPublishPlanStatus();
+
+  // Cancel plans thread.
+  [[noreturn]] void AbortPlans();
 };

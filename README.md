@@ -14,6 +14,8 @@ cmake -DCMAKE_PREFIX_PATH=/opt/drake ..
 make -j4
 ```
 
+An incomplete design documentation can be found [here](https://slides.com/pang/deck-36762e).
+
 
 ## Continuous Integration
 - CI is implemented by a custom Github Action that builds a docker image 

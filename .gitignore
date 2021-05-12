@@ -28,10 +28,11 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 .idea
+.DS_Store
 cmake-build-debug
 cmake-build-release
 /build/
 sandbox/
 Testing
-
+__pycache__
 

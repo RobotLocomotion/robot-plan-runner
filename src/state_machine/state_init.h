@@ -24,6 +24,11 @@ public:
   void PrintCurrentState(const PlanManagerStateMachine *manager,
                          double t_now_seconds) const override;
 
+  void AbortAllPlans(PlanManagerStateMachine *state_machine) override {
+    throw std::runtime_error(
+        "AbortAllPlans should not be called in state " + get_state_name());
+  };
+
   [[nodiscard]] PlanManagerStateTypes get_state_type() const override {
     return PlanManagerStateTypes::kStateInit;
   };
