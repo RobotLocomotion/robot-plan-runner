@@ -22,7 +22,7 @@ IiwaPlanManagerHardwareInterface::IiwaPlanManagerHardwareInterface(
 
   // PlanManagerSystem.
   auto plan_manager =
-      builder.template AddSystem<IiwaPlanManagerSystem>(config);
+      builder.template AddSystem<IiwaPlanManagerSystem>();
 
   // Subscribe to IIWA_STATUS.
   auto sub_iiwa_status = builder.AddSystem(
@@ -31,12 +31,6 @@ IiwaPlanManagerHardwareInterface::IiwaPlanManagerHardwareInterface(
   builder.Connect(sub_iiwa_status->get_output_port(),
                   plan_manager->get_iiwa_status_input_port());
 
-  // Subscribe to ROBOT_PLAN.
-  auto sub_robot_plans = builder.AddSystem(
-      drake::systems::lcm::LcmSubscriberSystem::Make<drake::lcmt_robot_plan>(
-          config["lcm_plan_channel"].as<std::string>(), lcm));
-  builder.Connect(sub_robot_plans->get_output_port(),
-                  plan_manager->get_robot_plan_input_port());
 
   // Publish iiwa command.
   auto iiwa_command_pub = builder.AddSystem(
