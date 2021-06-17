@@ -37,10 +37,9 @@ IiwaPlanManagerHardwareInterface::IiwaPlanManagerHardwareInterface(
 }
 
 [[noreturn]] void IiwaPlanManagerHardwareInterface::Run() {
-  drake::systems::Simulator<double> sim(*diagram_);
-  auto& context_diagram = sim.get_mutable_context();
+  auto context_diagram = diagram_->CreateDefaultContext();
   auto& context_manager = plan_manager_->GetMyMutableContextFromRoot(
-      &context_diagram);
+      context_diagram.get());
 
   // wait for the first IIWA_STATUS message.
   drake::log()->info("Waiting for first lcmt_iiwa_status");
@@ -58,7 +57,8 @@ IiwaPlanManagerHardwareInterface::IiwaPlanManagerHardwareInterface(
         owned_lcm_.get(), [&]() { return status_sub_->count() > 0; });
     status_value.GetMutableData()->set_value(status_sub_->message());
     const double t = status_sub_->message().utime * 1e-6;
-    sim.AdvanceTo(t - t_start);
+    context_diagram->SetTime(t - t_start);
+    diagram_->Publish(*context_diagram);
   }
 }
 
