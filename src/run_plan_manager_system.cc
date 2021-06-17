@@ -15,6 +15,7 @@ int main(int argc, char **argv) {
 
   auto plan_manger = IiwaPlanManagerHardwareInterface(config);
   plan_manger.SaveGraphvizStringToFile();
-  plan_manger.Run(1.0);
-  return 0;
+  plan_manger.Run();
+
+  return EXIT_FAILURE;
 }
