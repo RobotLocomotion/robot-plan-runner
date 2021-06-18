@@ -12,13 +12,18 @@ IiwaPlanManagerHardwareInterface::IiwaPlanManagerHardwareInterface(
   drake::systems::DiagramBuilder<double> builder;
 
   // PlanManagerSystem.
-  plan_manager_ = builder.template AddSystem<IiwaPlanManagerSystem>();
+  plan_manager_ = builder.template AddSystem<IiwaPlanManagerSystem>(config);
   diagram_ = builder.Build();
 
   // A standalone subscriber to IIWA_STATUS, used for lcm-driven loop.
   status_sub_ =
       std::make_unique<drake::lcm::Subscriber<drake::lcmt_iiwa_status>>(
           owned_lcm_.get(), config["lcm_status_channel"].as<std::string>());
+
+  // A standalone subscriber to ROBOT_PLAN.
+  plan_sub_ =
+      std::make_unique<drake::lcm::Subscriber<drake::lcmt_robot_plan>>(
+          owned_lcm_.get(), config["lcm_plan_channel"].as<std::string>());
 }
 
 [[noreturn]] void IiwaPlanManagerHardwareInterface::Run() {
@@ -32,6 +37,8 @@ IiwaPlanManagerHardwareInterface::IiwaPlanManagerHardwareInterface(
       owned_lcm_.get(), [&]() { return status_sub_->count() > 0; });
   auto &status_value = plan_manager_->get_iiwa_status_input_port().FixValue(
       &context_manager, status_sub_->message());
+  auto &plan_value = plan_manager_->get_robot_plan_input_port().FixValue(
+      &context_manager, drake::lcmt_robot_plan());
   const double t_start = status_sub_->message().utime * 1e-6;
 
   drake::log()->info("Controller started");
@@ -46,11 +53,17 @@ IiwaPlanManagerHardwareInterface::IiwaPlanManagerHardwareInterface(
     const double t = status_sub_->message().utime * 1e-6;
     context_diagram->SetTime(t - t_start);
 
+    // Add plans.
+    if (plan_sub_->count() > 0) {
+    plan_value.GetMutableData()->set_value(plan_sub_->message());
+    }
+
     // Compute command message and publish.
-    auto iiwa_cmd_msg = plan_manager_->get_iiwa_command_output_port()
+    const auto& iiwa_cmd_msg = plan_manager_->get_iiwa_command_output_port()
                             .Eval<drake::lcmt_iiwa_command>(context_manager);
     drake::lcm::Publish(owned_lcm_.get(), "IIWA_COMMAND", iiwa_cmd_msg);
   }
+   
 }
 
 void IiwaPlanManagerHardwareInterface::SaveGraphvizStringToFile(

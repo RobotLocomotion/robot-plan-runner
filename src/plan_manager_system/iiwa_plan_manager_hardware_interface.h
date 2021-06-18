@@ -21,5 +21,6 @@ private:
   std::unique_ptr<drake::systems::Diagram<double>> diagram_;
   std::unique_ptr<drake::lcm::DrakeLcm> owned_lcm_;
   std::unique_ptr<drake::lcm::Subscriber<drake::lcmt_iiwa_status>> status_sub_;
+  std::unique_ptr<drake::lcm::Subscriber<drake::lcmt_robot_plan>> plan_sub_;
   IiwaPlanManagerSystem *plan_manager_{nullptr};
 };
