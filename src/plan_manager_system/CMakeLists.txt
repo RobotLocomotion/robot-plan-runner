@@ -1,7 +1,7 @@
 add_library(iiwa_plan_manager_system
         iiwa_plan_manager_system.h iiwa_plan_manager_system.cc)
 target_link_libraries(iiwa_plan_manager_system
-        drake::drake plan_manager_state_machine iiwa_plan_factory)
+        plan_manager_state_machine iiwa_plan_factory)
 target_include_directories(iiwa_plan_manager_system
         PUBLIC ${PROJECT_SOURCE_DIR}/src)
 
