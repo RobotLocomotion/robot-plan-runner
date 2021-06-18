@@ -1,6 +1,7 @@
 #include <fstream>
 #include <numeric>
 
+#include "drake/systems/analysis/simulator.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 
 #include "iiwa_plan_manager_hardware_interface.h"
@@ -27,9 +28,10 @@ IiwaPlanManagerHardwareInterface::IiwaPlanManagerHardwareInterface(
 }
 
 [[noreturn]] void IiwaPlanManagerHardwareInterface::Run() {
-  auto context_diagram = diagram_->CreateDefaultContext();
-  auto &context_manager =
-      plan_manager_->GetMyMutableContextFromRoot(context_diagram.get());
+  drake::systems::Simulator<double> sim(*diagram_);
+  auto& context_diagram = sim.get_mutable_context();
+  auto& context_manager =
+      plan_manager_->GetMyMutableContextFromRoot(&context_diagram);
 
   // Wait for the first IIWA_STATUS message.
   drake::log()->info("Waiting for first lcmt_iiwa_status");
@@ -50,20 +52,19 @@ IiwaPlanManagerHardwareInterface::IiwaPlanManagerHardwareInterface(
 
     // Update diagram context.
     status_value.GetMutableData()->set_value(status_sub_->message());
-    const double t = status_sub_->message().utime * 1e-6;
-    context_diagram->SetTime(t - t_start);
-
-    // Add plans.
+    const double t = status_sub_->message().utime * 1e-6 - t_start;
     if (plan_sub_->count() > 0) {
-    plan_value.GetMutableData()->set_value(plan_sub_->message());
+      plan_value.GetMutableData()->set_value(plan_sub_->message());
     }
+
+    // Let Simulator handle other non-time-critical events.
+    sim.AdvanceTo(t);
 
     // Compute command message and publish.
     const auto& iiwa_cmd_msg = plan_manager_->get_iiwa_command_output_port()
                             .Eval<drake::lcmt_iiwa_command>(context_manager);
     drake::lcm::Publish(owned_lcm_.get(), "IIWA_COMMAND", iiwa_cmd_msg);
   }
-   
 }
 
 void IiwaPlanManagerHardwareInterface::SaveGraphvizStringToFile(
