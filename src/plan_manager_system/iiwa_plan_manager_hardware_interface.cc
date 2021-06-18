@@ -52,13 +52,13 @@ IiwaPlanManagerHardwareInterface::IiwaPlanManagerHardwareInterface(
 
     // Update diagram context.
     status_value.GetMutableData()->set_value(status_sub_->message());
-    const double t = status_sub_->message().utime * 1e-6 - t_start;
     if (plan_sub_->count() > 0) {
       plan_value.GetMutableData()->set_value(plan_sub_->message());
       plan_sub_->clear();
     }
 
     // Let Simulator handle other non-time-critical events.
+    const double t = status_sub_->message().utime * 1e-6 - t_start;
     sim.AdvanceTo(t);
 
     // Compute command message and publish.
