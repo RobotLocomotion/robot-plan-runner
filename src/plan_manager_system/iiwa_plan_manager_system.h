@@ -1,4 +1,7 @@
 #pragma once
+
+#include <yaml-cpp/yaml.h>
+
 #include "drake/systems/framework/leaf_system.h"
 #include "drake_lcmtypes/drake/lcmt_iiwa_command.hpp"
 #include "drake_lcmtypes/drake/lcmt_iiwa_status.hpp"
@@ -7,11 +10,11 @@
 #include "plans/iiwa_plan_factory.h"
 #include "state_machine/plan_manager_state_machine.h"
 
+
 class IiwaPlanManagerSystem : public drake::systems::LeafSystem<double> {
 public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(IiwaPlanManagerSystem);
-
-  explicit IiwaPlanManagerSystem(YAML::Node config);
+  IiwaPlanManagerSystem(YAML::Node config);
 
   const drake::systems::InputPort<double> &get_iiwa_status_input_port() const {
     return get_input_port(input_port_iiwa_status_idx_);
@@ -20,6 +23,7 @@ public:
   const drake::systems::InputPort<double> &get_robot_plan_input_port() const {
     return get_input_port(input_port_robot_plan_idx_);
   }
+
 
   const drake::systems::OutputPort<double> &
   get_iiwa_command_output_port() const {

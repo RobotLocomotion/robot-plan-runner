@@ -12,12 +12,11 @@ using Eigen::VectorXd;
 IiwaPlanManagerSystem::IiwaPlanManagerSystem(YAML::Node config)
     : config_(std::move(config)),
       control_period_seconds_(config["control_period"].as<double>()) {
-
+  // Initialize state machine, plan factory.
+  state_machine_ = std::make_unique<PlanManagerStateMachine>(0, config_);
   plan_factory_ = std::make_unique<IiwaPlanFactory>(config_);
 
-  // Initialize state machine.
-  state_machine_ = std::make_unique<PlanManagerStateMachine>(0, config_);
-
+  // Printing events.
   set_name("IiwaPlanManagerSystem");
   DeclarePeriodicPublishEvent(1.0, 0,
                               &IiwaPlanManagerSystem::PrintCurrentState);
@@ -42,7 +41,6 @@ IiwaPlanManagerSystem::IiwaPlanManagerSystem(YAML::Node config)
                                 &IiwaPlanManagerSystem::CalcIiwaCommand)
           .get_index();
 }
-
 void IiwaPlanManagerSystem::CalcIiwaCommand(
     const drake::systems::Context<double> &context,
     drake::lcmt_iiwa_command *cmd) const {

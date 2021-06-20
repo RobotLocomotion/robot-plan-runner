@@ -9,7 +9,7 @@ class IiwaPlanManagerHardwareInterface {
 public:
   explicit IiwaPlanManagerHardwareInterface(const YAML::Node &config);
 
-  void Run(double realtime_rate);
+  [[noreturn]] void Run();
 
   /*
    * Saves the graphviz string which describes this system to a file.
@@ -20,4 +20,7 @@ public:
 private:
   std::unique_ptr<drake::systems::Diagram<double>> diagram_;
   std::unique_ptr<drake::lcm::DrakeLcm> owned_lcm_;
+  std::unique_ptr<drake::lcm::Subscriber<drake::lcmt_iiwa_status>> status_sub_;
+  std::unique_ptr<drake::lcm::Subscriber<drake::lcmt_robot_plan>> plan_sub_;
+  IiwaPlanManagerSystem *plan_manager_{nullptr};
 };
