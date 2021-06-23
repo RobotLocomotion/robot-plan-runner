@@ -17,11 +17,10 @@ public:
   TaskSpaceTrajectoryPlan(
       drake::trajectories::PiecewiseQuaternionSlerp<double> quat_traj,
       drake::trajectories::PiecewisePolynomial<double> xyz_traj,
-      const drake::multibody::MultibodyPlant<double> *plant,
-      const std::string &ee_frame_name)
+      drake::multibody::MultibodyPlant<double> *plant,
+      const drake::multibody::Frame<double> &frame_E)
       : PlanBase(plant), quat_traj_(std::move(quat_traj)),
-        xyz_traj_(std::move(xyz_traj)),
-        frame_E_(plant->GetFrameByName(ee_frame_name)) {
+        xyz_traj_(std::move(xyz_traj)), frame_E_(frame_E) {
 
     params_ = std::make_unique<
         drake::manipulation::planner::DifferentialInverseKinematicsParameters>(
@@ -43,6 +42,7 @@ private:
   const drake::trajectories::PiecewiseQuaternionSlerp<double> quat_traj_;
   const drake::trajectories::PiecewisePolynomial<double> xyz_traj_;
 
+  // frame of end-effector body + offset.
   const drake::multibody::Frame<double> &frame_E_;
 
   std::unique_ptr<drake::systems::Context<double>> plant_context_;

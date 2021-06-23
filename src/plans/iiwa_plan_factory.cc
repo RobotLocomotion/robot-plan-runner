@@ -20,11 +20,27 @@ IiwaPlanFactory::IiwaPlanFactory(const YAML::Node &config) : config_(config) {
   plant_ = std::make_unique<drake::multibody::MultibodyPlant<double>>(1e-3);
   auto parser = drake::multibody::Parser(plant_.get());
 
-  const auto& iiwa_path = config_["robot_sdf_path"].as<std::string>();
+  const auto &iiwa_path = config_["robot_sdf_path"].as<std::string>();
   parser.AddModelFromFile(drake::FindResourceOrThrow(iiwa_path));
   plant_->WeldFrames(
       plant_->world_frame(),
       plant_->GetFrameByName(config_["robot_baselink_name"].as<std::string>()));
+
+  // Add offset frame here.
+  const auto &frame_E =
+      plant_->GetFrameByName(config_["robot_ee_body_name"].as<std::string>());
+
+  const vector<double> offset_vec =
+      config_["robot_ee_offset"].as<vector<double>>();
+  Eigen::Matrix<double, 6, 1> offset(offset_vec.data());
+
+  const auto offset_transform = drake::math::RigidTransform<double>(
+      drake::math::RollPitchYaw<double>(offset.head(3)), offset.tail(3));
+
+  const auto &frame_T = plant_->AddFrame(
+      std::make_unique<drake::multibody::FixedOffsetFrame<double>>(
+          "plan_runner_frame_T", frame_E, offset_transform));
+
   plant_->Finalize();
 }
 
@@ -85,11 +101,15 @@ std::unique_ptr<PlanBase> IiwaPlanFactory::MakeTaskSpaceTrajectoryPlan(
   }
 
   auto quat_traj = PiecewiseQuaternionSlerp<double>(t_knots, quat_knots);
+
+  // Use first order hold instead of trajectories. We want to avoid smoothing
+  // non-smooth trajectories if the user commands so.
+  // TODO(terry-suh): Should this be an option in the config?
   auto xyz_traj =
-      PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-          t_knots, xyz_knots, VectorXd::Zero(3), VectorXd::Zero(3));
+      PiecewisePolynomial<double>::FirstOrderHold(t_knots, xyz_knots);
+
+  auto &frame_T = plant_->GetFrameByName("plan_runner_frame_T");
 
   return std::make_unique<TaskSpaceTrajectoryPlan>(
-      std::move(quat_traj), std::move(xyz_traj), plant_.get(),
-      config_["robot_ee_body_name"].as<std::string>());
+      std::move(quat_traj), std::move(xyz_traj), plant_.get(), frame_T);
 }
