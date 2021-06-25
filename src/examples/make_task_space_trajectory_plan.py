@@ -26,7 +26,7 @@ def calc_task_space_plan_msg(X_ET, X_WT_list, t_knots):
         msg_state.num_joints = n_q
         msg_state.joint_name = joint_names
         msg_state.joint_position = np.hstack(
-            [X_ET.rotation().ToQuaternion().wxyz(), X_ET.translation()])
+            [X_WTi.rotation().ToQuaternion().wxyz(), X_WTi.translation()])
 
         msg_plan.plan.append(msg_state)
 

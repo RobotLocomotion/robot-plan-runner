@@ -157,10 +157,12 @@ zmq_client.wait_for_plan_to_finish()
 #%% send some task space plan.
 frame_E = zmq_client.plant.GetFrameByName('iiwa_link_7')
 X_ET = RigidTransform()
+X_ET.set_translation([0.1, 0, 0])
 X_WE0 = zmq_client.get_current_ee_pose(frame_E)
-X_WE1 = RigidTransform(X_WE0.rotation(),
-                       X_WE0.translation() + np.array([0, 0.2, 0]))
-plan_msg = calc_task_space_plan_msg(X_ET, [X_WE0, X_WE1], [0, 10])
+X_WT0 = X_WE0.multiply(X_ET)
+X_WT1 = RigidTransform(X_WT0.rotation(),
+                       X_WT0.translation() + np.array([0, 0.2, 0]))
+plan_msg = calc_task_space_plan_msg(X_ET, [X_WT0, X_WT1], [0, 5])
 zmq_client.send_plan(plan_msg)
 
 
