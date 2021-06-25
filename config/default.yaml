@@ -12,8 +12,6 @@ staus_update_period_seconds: 0.01
 robot_sdf_path: "drake/manipulation/models/iiwa_description/iiwa7/iiwa7_no_collision.sdf"
 robot_baselink_name: "iiwa_link_0"
 robot_ee_body_name: "iiwa_link_7"
-# offset of end-effector frame from iiwa_link_7. Expressed in rpyxyz.
-robot_ee_offset: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 # Control Parameters
 control_period: 0.005

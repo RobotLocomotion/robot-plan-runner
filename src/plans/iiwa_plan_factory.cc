@@ -26,21 +26,6 @@ IiwaPlanFactory::IiwaPlanFactory(const YAML::Node &config) : config_(config) {
       plant_->world_frame(),
       plant_->GetFrameByName(config_["robot_baselink_name"].as<std::string>()));
 
-  // Add offset frame here.
-  const auto &frame_E =
-      plant_->GetFrameByName(config_["robot_ee_body_name"].as<std::string>());
-
-  const vector<double> offset_vec =
-      config_["robot_ee_offset"].as<vector<double>>();
-  Eigen::Matrix<double, 6, 1> offset(offset_vec.data());
-
-  const auto offset_transform = drake::math::RigidTransform<double>(
-      drake::math::RollPitchYaw<double>(offset.head(3)), offset.tail(3));
-
-  const auto &frame_T = plant_->AddFrame(
-      std::make_unique<drake::multibody::FixedOffsetFrame<double>>(
-          "plan_runner_frame_T", frame_E, offset_transform));
-
   plant_->Finalize();
 }
 
@@ -79,8 +64,16 @@ std::unique_ptr<PlanBase> IiwaPlanFactory::MakeJointSpaceTrajectoryPlan(
 
 std::unique_ptr<PlanBase> IiwaPlanFactory::MakeTaskSpaceTrajectoryPlan(
     const drake::lcmt_robot_plan &msg_plan) const {
+  int n_knots = msg_plan.num_states - 1;
 
-  int n_knots = msg_plan.num_states;
+  // X_ET.
+  const auto& q_xyz_ET = msg_plan.plan[n_knots].joint_position;
+  const auto Q_ET = Quaterniond(q_xyz_ET[0], q_xyz_ET[1], q_xyz_ET[2],
+                                q_xyz_ET[3]);
+  const auto p_EoTo_E = Eigen::Vector3d(q_xyz_ET[4], q_xyz_ET[5], q_xyz_ET[6]);
+  const auto X_ET = drake::math::RigidTransform<double>(Q_ET, p_EoTo_E);
+
+  // trajectory.
   vector<double> t_knots(n_knots);
   vector<Quaterniond> quat_knots(n_knots);
   vector<MatrixXd> xyz_knots(n_knots, MatrixXd(3, 1));
@@ -89,14 +82,14 @@ std::unique_ptr<PlanBase> IiwaPlanFactory::MakeTaskSpaceTrajectoryPlan(
     // Store time
     t_knots[t] = static_cast<double>(msg_plan.plan.at(t).utime) / 1e6;
     // Store quaternions
-    auto quat = msg_plan.plan.at(t).joint_position;
-    quat_knots[t] = Quaterniond(quat.at(0), quat.at(1), quat.at(2), quat.at(3));
+    const auto& q_xyz = msg_plan.plan.at(t).joint_position;
+    quat_knots[t] = Quaterniond(q_xyz[0], q_xyz[1], q_xyz[2], q_xyz[3]);
 
     // Store xyz positions.
     // TODO(terry-suh): Change this to a better implementation once Taskspace
     // gets their own LCM messages.
     for (int i = 0; i < 3; i++) {
-      xyz_knots[t](i) = msg_plan.plan.at(t).joint_position.at(4 + i);
+      xyz_knots[t](i) = q_xyz[4 + i];
     }
   }
 
@@ -108,8 +101,11 @@ std::unique_ptr<PlanBase> IiwaPlanFactory::MakeTaskSpaceTrajectoryPlan(
   auto xyz_traj =
       PiecewisePolynomial<double>::FirstOrderHold(t_knots, xyz_knots);
 
-  auto &frame_T = plant_->GetFrameByName("plan_runner_frame_T");
+  // Get EE frame.
+  const auto &frame_E =
+      plant_->GetFrameByName(config_["robot_ee_body_name"].as<std::string>());
 
   return std::make_unique<TaskSpaceTrajectoryPlan>(
-      std::move(quat_traj), std::move(xyz_traj), plant_.get(), frame_T);
+      std::move(quat_traj), std::move(xyz_traj), X_ET, plant_.get(), frame_E,
+      config_["control_period"].as<double>());
 }
