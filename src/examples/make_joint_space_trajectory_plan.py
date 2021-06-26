@@ -17,7 +17,7 @@ q_knots2[0] = q_knots1[1]
 q_knots2[1] = q_knots1[0]
 
 
-def calc_plan_msg(t_knots, q_knots):
+def calc_joint_space_plan_msg(t_knots, q_knots):
     n_knots, n_q = q_knots.shape
     msg_plan = lcmt_robot_plan()
 
