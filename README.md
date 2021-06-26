@@ -14,6 +14,13 @@ cmake -DCMAKE_PREFIX_PATH=/opt/drake ..
 make -j4
 ```
 
+To use lcm types defined within plan runner, add the python path:
+`export PYTHONPATH={ROBOT_PLAN_RUNNER_DIR}/build/robot-plan-runner-lcmtypes:${PYTHONPATH}`
+
+To use the client as an external module, add the python path:
+`export PYTHONPATH={ROBOT_PLAN_RUNNER_DIR}/src:${PYTHONPATH}`
+
+
 An incomplete design documentation can be found [here](https://slides.com/pang/deck-36762e).
 
 
