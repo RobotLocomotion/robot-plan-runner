@@ -14,8 +14,6 @@ from drake import lcmt_iiwa_status, lcmt_robot_plan
 from robot_plan_runner import lcmt_plan_status, lcmt_plan_status_constants
 
 
-#%% zmq client.
-
 def build_iiwa7_plant():
     plant = MultibodyPlant(1e-3)
     parser = Parser(plant=plant)

@@ -4,6 +4,7 @@ import numpy as np
 from drake import lcmt_robot_state
 from drake import lcmt_robot_plan
 
+
 def calc_joint_space_plan_msg(t_knots, q_knots):
     n_knots, n_q = q_knots.shape
     msg_plan = lcmt_robot_plan()
@@ -26,7 +27,8 @@ def calc_joint_space_plan_msg(t_knots, q_knots):
         msg_plan.plan.append(msg_state)
 
     return msg_plan
-    
+
+
 def calc_task_space_plan_msg(X_ET, X_WT_list, t_knots):
     n_knots = len(t_knots)
     msg_plan = lcmt_robot_plan()
