@@ -5,17 +5,14 @@ import sys
 import zmq
 import lcm
 
+import numpy as np
+
 from pydrake.all import MultibodyPlant, Parser, RigidTransform
 from pydrake.common import FindResourceOrThrow
-from drake import lcmt_iiwa_status
-
-from make_joint_space_trajectory_plan import *
-from make_task_space_trajectory_plan import calc_task_space_plan_msg
+from drake import lcmt_iiwa_status, lcmt_robot_plan
 
 from robot_plan_runner import lcmt_plan_status, lcmt_plan_status_constants
 
-
-#%% zmq client.
 
 def build_iiwa7_plant():
     plant = MultibodyPlant(1e-3)
@@ -104,6 +101,9 @@ class PlanManagerZmqClient:
         return self.plant.CalcRelativeTransform(
             context, self.plant.world_frame(), frame_E)
 
+    def get_current_joint_angles(self):
+        return self.iiwa_position_getter.get_iiwa_position_measured()
+
     def send_plan(self, plan_msg):
         self.plan_msg_lock.acquire()
         self.last_plan_msg = plan_msg
@@ -134,59 +134,3 @@ class PlanManagerZmqClient:
         self.abort_client.send(b"abort")
         s = self.abort_client.recv_string()
         print(s)
-
-
-zmq_client = PlanManagerZmqClient()
-
-#%% send some joint space plans.
-duration = 5.0
-plan_msg = calc_joint_space_plan_msg([0, duration], q_knots1)
-zmq_client.send_plan(plan_msg)
-time.sleep(1.0)
-zmq_client.wait_for_plan_to_finish()
-
-plan_msg = calc_joint_space_plan_msg([0, duration], q_knots2)
-zmq_client.send_plan(plan_msg)
-time.sleep(1.0)
-# Calling wait for plan to finish immediately after calling abort should
-#  return FINISHED.
-zmq_client.abort()
-zmq_client.wait_for_plan_to_finish()
-
-
-#%% send some task space plan.
-frame_E = zmq_client.plant.GetFrameByName('iiwa_link_7')
-X_ET = RigidTransform()
-X_ET.set_translation([0.1, 0, 0])
-X_WE0 = zmq_client.get_current_ee_pose(frame_E)
-X_WT0 = X_WE0.multiply(X_ET)
-X_WT1 = RigidTransform(X_WT0.rotation(),
-                       X_WT0.translation() + np.array([0, 0.2, 0]))
-plan_msg = calc_task_space_plan_msg(X_ET, [X_WT0, X_WT1], [0, 5])
-zmq_client.send_plan(plan_msg)
-
-
-#%% send some joint space plans, randomly interrupt, return to home,
-# and start over.
-# TODO: support WaitForServer, which blocks until the server is in state IDLE.
-while True:
-    print("plan sent")
-    plan_msg = calc_joint_space_plan_msg([0, duration], q_knots1)
-    zmq_client.send_plan(plan_msg)
-    print("pretending to do some work")
-    stop_duration = np.random.rand() * duration
-    time.sleep(stop_duration)
-    zmq_client.abort()
-    print("plan aborted after t = {}s".format(stop_duration))
-
-    # # get current robot position.
-    q_now = zmq_client.iiwa_position_getter.get_iiwa_position_measured()
-    q_knots_return = np.vstack([q_now, q0])
-    plan_msg = calc_joint_space_plan_msg([0, stop_duration], q_knots_return)
-    zmq_client.send_plan(plan_msg)
-    print("Returning to q0.")
-    zmq_client.wait_for_plan_to_finish()
-    print("returned to q0.")
-    print("------------------------------------------------------")
-
-
