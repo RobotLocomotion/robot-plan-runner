@@ -6,6 +6,7 @@
 
 #include "joint_space_trajectory_plan.h"
 #include "task_space_trajectory_plan.h"
+#include "admittance_trajectory_plan.h"
 
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::PiecewiseQuaternionSlerp;
@@ -37,6 +38,8 @@ IiwaPlanFactory::MakePlan(const drake::lcmt_robot_plan &msg_plan) const {
     return MakeJointSpaceTrajectoryPlan(msg_plan);
   } else if (msg_plan.plan.at(0).joint_name.at(0) == "qw") {
     return MakeTaskSpaceTrajectoryPlan(msg_plan);
+  } else if (msg_plan.plan.at(0).joint_name.at(0) == "admittance") {
+    return MakeAdmittanceTrajectoryPlan(msg_plan);
   }
   throw std::runtime_error("error in plan lcm message.");
 }
@@ -108,4 +111,64 @@ std::unique_ptr<PlanBase> IiwaPlanFactory::MakeTaskSpaceTrajectoryPlan(
   return std::make_unique<TaskSpaceTrajectoryPlan>(
       std::move(quat_traj), std::move(xyz_traj), X_ET, plant_.get(), frame_E,
       config_["control_period"].as<double>());
+}
+
+std::unique_ptr<PlanBase> IiwaPlanFactory::MakeAdmittanceTrajectoryPlan(
+    const drake::lcmt_robot_plan &msg_plan) const {
+  int n_knots = msg_plan.num_states - 1;
+
+  // X_ET.
+  const auto& q_xyz_ET = msg_plan.plan[n_knots].joint_position;
+  const auto Q_ET = Quaterniond(q_xyz_ET[0], q_xyz_ET[1], q_xyz_ET[2],
+                                q_xyz_ET[3]);
+  const auto p_EoTo_E = Eigen::Vector3d(q_xyz_ET[4], q_xyz_ET[5], q_xyz_ET[6]);
+  const auto X_ET = drake::math::RigidTransform<double>(Q_ET, p_EoTo_E);
+
+  // trajectory.
+  vector<double> t_knots(n_knots);
+  vector<Quaterniond> quat_knots(n_knots);
+  vector<MatrixXd> xyz_knots(n_knots, MatrixXd(3, 1));
+
+  for (int t = 0; t < n_knots; t++) {
+    // Store time
+    t_knots[t] = static_cast<double>(msg_plan.plan.at(t).utime) / 1e6;
+    // Store quaternions
+    const auto& q_xyz = msg_plan.plan.at(t).joint_position;
+    quat_knots[t] = Quaterniond(q_xyz[0], q_xyz[1], q_xyz[2], q_xyz[3]);
+
+    // Store xyz positions.
+    // TODO(terry-suh): Change this to a better implementation once Taskspace
+    // gets their own LCM messages.
+    for (int i = 0; i < 3; i++) {
+      xyz_knots[t](i) = q_xyz[4 + i];
+    }
+  }
+
+  auto quat_traj = PiecewiseQuaternionSlerp<double>(t_knots, quat_knots);
+
+  // Use first order hold instead of trajectories. We want to avoid smoothing
+  // non-smooth trajectories if the user commands so.
+  // TODO(terry-suh): Should this be an option in the config?
+  auto xyz_traj =
+      PiecewisePolynomial<double>::FirstOrderHold(t_knots, xyz_knots);
+
+  // Get EE frame.
+  const auto &frame_E =
+      plant_->GetFrameByName(config_["robot_ee_body_name"].as<std::string>());
+
+
+  // Read SEED parameters from config file  
+  auto Krpy_vector = config_["Krpy"].as<std::vector<double>>();
+  auto Drpy_vector = config_["Drpy"].as<std::vector<double>>();
+  auto Kxyz_vector = config_["Kxyz"].as<std::vector<double>>();
+  auto Dxyz_vector = config_["Dxyz"].as<std::vector<double>>();
+
+  const auto Krpy = Eigen::Map<const Eigen::VectorXd>(Krpy_vector.data(), 3);
+  const auto Drpy = Eigen::Map<const Eigen::VectorXd>(Drpy_vector.data(), 3);
+  const auto Kxyz = Eigen::Map<const Eigen::VectorXd>(Kxyz_vector.data(), 3);
+  const auto Dxyz = Eigen::Map<const Eigen::VectorXd>(Dxyz_vector.data(), 3);
+
+  return std::make_unique<AdmittanceTrajectoryPlan>(
+      std::move(quat_traj), std::move(xyz_traj), X_ET, plant_.get(), frame_E,
+      config_["control_period"].as<double>(), Krpy, Drpy, Kxyz, Dxyz);
 }

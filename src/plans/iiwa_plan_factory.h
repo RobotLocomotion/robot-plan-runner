@@ -18,4 +18,6 @@ private:
   MakeJointSpaceTrajectoryPlan(const drake::lcmt_robot_plan &msg_plan) const;
   [[nodiscard]] std::unique_ptr<PlanBase>
   MakeTaskSpaceTrajectoryPlan(const drake::lcmt_robot_plan &msg_plan) const;
+  [[nodiscard]] std::unique_ptr<PlanBase>
+  MakeAdmittanceTrajectoryPlan(const drake::lcmt_robot_plan &msg_plan) const;  
 };

@@ -4,7 +4,7 @@
 int main(int argc, char **argv) {
   std::string filename;
   if (argc < 2) {
-    filename = "../config/default.yaml";
+    filename = "../config/seed.yaml";
   } else {
     filename = argv[1];
   }
