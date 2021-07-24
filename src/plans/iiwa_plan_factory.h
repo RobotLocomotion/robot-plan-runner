@@ -20,4 +20,10 @@ private:
   MakeTaskSpaceTrajectoryPlan(const drake::lcmt_robot_plan &msg_plan) const;
   [[nodiscard]] std::unique_ptr<PlanBase>
   MakeAdmittanceTrajectoryPlan(const drake::lcmt_robot_plan &msg_plan) const;  
+  [[nodiscard]] std::unique_ptr<PlanBase>
+  MakeHybridTrajectoryPlan(const drake::lcmt_robot_plan &msg_plan) const;    
+  [[nodiscard]] std::unique_ptr<PlanBase>
+  MakeImplicitTrajectoryPlan(const drake::lcmt_robot_plan &msg_plan) const;      
+  [[nodiscard]] std::unique_ptr<PlanBase>
+  MakeRigidTrajectoryPlan(const drake::lcmt_robot_plan &msg_plan) const;        
 };

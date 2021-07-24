@@ -94,3 +94,126 @@ def calc_task_space_admittance_plan_msg(X_ET, X_WT_list, t_knots):
     msg_plan.plan.append(msg_state_ET)
 
     return msg_plan
+
+def calc_task_space_hybrid_plan_msg(X_ET, tau_T, f_W, X_WT_list, t_knots):
+    n_knots = len(t_knots)
+    msg_plan = lcmt_robot_plan()
+    msg_plan.utime = round(time.time() * 1000)
+    msg_plan.num_states = n_knots + 2
+    joint_names = ["hybrid", "qx", "qy", "qz", "px", "py", "pz"]
+    n_q = len(joint_names)
+
+    # TODO: use our own lcm types.
+
+    # The first n_knots msg_states are for the trajectory.
+    for i, X_WTi in enumerate(X_WT_list):
+        msg_state = lcmt_robot_state()
+        msg_state.utime = int(1e6 * t_knots[i])
+        msg_state.num_joints = n_q
+        msg_state.joint_name = joint_names
+        msg_state.joint_position = np.hstack(
+            [X_WTi.rotation().ToQuaternion().wxyz(), X_WTi.translation()])
+
+        msg_plan.plan.append(msg_state)
+
+    # The second-to-last state in msg_plan encodes the force.
+    msg_state_F = lcmt_robot_state()
+    msg_state_F.utime = 0
+    msg_state_F.num_joints = 6
+    msg_state_F.joint_name = ["tx", "ty", "tz", "fx", "fy", "fz"]
+    msg_state_F.joint_position = np.hstack([tau_T, f_W])
+    msg_plan.plan.append(msg_state_F)
+
+    # The last state in msg_plan encodes the offset between tool frame (
+    # T) and EE frame E.
+    msg_state_ET = lcmt_robot_state()
+    msg_state_ET.utime = 0
+    msg_state_ET.num_joints = 7
+    msg_state_ET.joint_name = joint_names
+    msg_state_ET.joint_position = np.hstack(
+        [X_ET.rotation().ToQuaternion().wxyz(), X_ET.translation()])
+    msg_plan.plan.append(msg_state_ET)
+
+    return msg_plan    
+
+def calc_task_space_implicit_plan_msg(X_ET, lambda_WT, X_WT_list, t_knots):
+    n_knots = len(t_knots)
+    msg_plan = lcmt_robot_plan()
+    msg_plan.utime = round(time.time() * 1000)
+    msg_plan.num_states = n_knots + 2
+    joint_names = ["implicit", "qx", "qy", "qz", "px", "py", "pz"]
+    n_q = len(joint_names)
+
+    # TODO: use our own lcm types.
+
+    # The first n_knots msg_states are for the trajectory.
+    for i, X_WTi in enumerate(X_WT_list):
+        msg_state = lcmt_robot_state()
+        msg_state.utime = int(1e6 * t_knots[i])
+        msg_state.num_joints = n_q
+        msg_state.joint_name = joint_names
+        msg_state.joint_position = np.hstack(
+            [X_WTi.rotation().ToQuaternion().wxyz(), X_WTi.translation()])
+
+        msg_plan.plan.append(msg_state)
+
+    # The second-to-last state in msg_plan encodes the desired contact force.
+    msg_state_F = lcmt_robot_state()
+    msg_state_F.utime = 0
+    msg_state_F.num_joints = 3
+    msg_state_F.joint_name = ["fx", "fy", "fz"]
+    msg_state_F.joint_position = lambda_WT
+    msg_plan.plan.append(msg_state_F)
+
+    # The last state in msg_plan encodes the offset between tool frame (
+    # T) and EE frame E.
+    msg_state_ET = lcmt_robot_state()
+    msg_state_ET.utime = 0
+    msg_state_ET.num_joints = 7
+    msg_state_ET.joint_name = joint_names
+    msg_state_ET.joint_position = np.hstack(
+        [X_ET.rotation().ToQuaternion().wxyz(), X_ET.translation()])
+    msg_plan.plan.append(msg_state_ET)
+
+    return msg_plan        
+
+def calc_task_space_rigid_plan_msg(X_ET, tau_T, f_W, X_WT_list, t_knots):
+    n_knots = len(t_knots)
+    msg_plan = lcmt_robot_plan()
+    msg_plan.utime = round(time.time() * 1000)
+    msg_plan.num_states = n_knots + 2
+    joint_names = ["rigid", "qx", "qy", "qz", "px", "py", "pz"]
+    n_q = len(joint_names)
+
+    # TODO: use our own lcm types.
+
+    # The first n_knots msg_states are for the trajectory.
+    for i, X_WTi in enumerate(X_WT_list):
+        msg_state = lcmt_robot_state()
+        msg_state.utime = int(1e6 * t_knots[i])
+        msg_state.num_joints = n_q
+        msg_state.joint_name = joint_names
+        msg_state.joint_position = np.hstack(
+            [X_WTi.rotation().ToQuaternion().wxyz(), X_WTi.translation()])
+
+        msg_plan.plan.append(msg_state)
+
+    # The second-to-last state in msg_plan encodes the force.
+    msg_state_F = lcmt_robot_state()
+    msg_state_F.utime = 0
+    msg_state_F.num_joints = 6
+    msg_state_F.joint_name = ["tx", "ty", "tz", "fx", "fy", "fz"]
+    msg_state_F.joint_position = np.hstack([tau_T, f_W])
+    msg_plan.plan.append(msg_state_F)
+
+    # The last state in msg_plan encodes the offset between tool frame (
+    # T) and EE frame E.
+    msg_state_ET = lcmt_robot_state()
+    msg_state_ET.utime = 0
+    msg_state_ET.num_joints = 7
+    msg_state_ET.joint_name = joint_names
+    msg_state_ET.joint_position = np.hstack(
+        [X_ET.rotation().ToQuaternion().wxyz(), X_ET.translation()])
+    msg_plan.plan.append(msg_state_ET)
+
+    return msg_plan    

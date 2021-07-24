@@ -1,6 +1,6 @@
 #include "drake_lcmtypes/drake/lcmt_robot_state.hpp"
 
-#include "admittance_trajectory_plan.h"
+#include "hybrid_trajectory_plan.h"
 
 using drake::manipulation::planner::DifferentialInverseKinematicsResult;
 using drake::manipulation::planner::DifferentialInverseKinematicsStatus;
@@ -16,94 +16,75 @@ using std::endl;
 using std::sin;
 using std::cos;
 
-void AdmittanceTrajectoryPlan::Step(const State &state, double control_period,
+void HybridTrajectoryPlan::Step(const State &state, double control_period,
                                    double t, Command *cmd) const {
 
   // 1. Update diffik mbp with the current status of the robot.
-  plant_->SetPositions(plant_context_.get(), state.q);
+  Eigen::Matrix<double, 14, 1> qv;
+  qv << state.q, state.v;
+  plant_->SetPositionsAndVelocities(plant_context_.get(), qv);
 
-  // 2. Query reference position and actual position of tool frame.
-  const drake::math::RigidTransformd X_WTr(quat_traj_.orientation(t),
-                                           xyz_traj_.value(t));
+  // 2. Compute current position and desired transforms.
+  const drake::math::RigidTransformd X_WT_desired(quat_traj_.orientation(t),
+                                            xyz_traj_.value(t));
   const auto& frame_W = plant_->world_frame();
   const auto X_WE = plant_->CalcRelativeTransform(
       *plant_context_, frame_W, frame_E_);
   const auto X_WT = X_WE * X_ET_;
 
-  // 3. Convert F_TC_ into F_TrC
-  auto R_TrT = (X_WTr.inverse() * X_WT).rotation();
-  // Adjoint transform for converting force.
-  auto tau_TrC = R_TrT * F_TC_.head(3);
-  auto f_TrC = R_TrT * F_TC_.tail(3);
-  auto xyzdot_TrC = R_TrT * V_TC_.tail(3);
+  // 3. Compute current velocity.
+  const auto V_WE = plant_->EvalBodySpatialVelocityInWorld(
+    *plant_context_, frame_E_.body());
+  const auto p_ET_W = X_WE.rotation().matrix() * X_ET_.translation();
+  const auto V_WT = V_WE.Shift(p_ET_W);
 
-  // Converting rpydot from one frame to another requires going through angular 
-  // velocity. This involves some work unfortunately....
+  // 3. Compute the translational part of correction.
+  Eigen::Vector3d p_WT_d = X_WT_desired.translation();
+  // We will leave the x,y coordinates of p_WT_d alone and modify the 
+  // z_part. The z part is computed by X_WT * X_TC * Xd_CT 
+  // where Xd_TC satisfies the bushing equation Fzd = Kz * zx_TC
 
-  auto rpy_TC = drake::math::RollPitchYaw<double>(X_TC_.rotation());
-  double r_TC = rpy_TC.roll_angle();
-  double p_TC = rpy_TC.pitch_angle();
-  double y_TC = rpy_TC.yaw_angle();
+  Eigen::Vector3d fd_T = X_WT.inverse() * fd_W_;
+  auto Kxyz_mat = Eigen::Matrix3d(Kxyz_.asDiagonal());
+  auto xd_TC = drake::math::RigidTransformd(Kxyz_mat.inverse() * fd_T);
 
-  Eigen::Matrix3d Ninv;
-  Ninv << cos(p_TC) * cos(y_TC), -sin(y_TC), 0, 
-          cos(p_TC) * sin(y_TC), cos(y_TC), 0,
-          -sin(p_TC), 0, 1;
+  auto Xd_WT = X_WT * X_TC_ * xd_TC.inverse();
+  
+  Eigen::Vector3d p_WT_corrected;
+  p_WT_corrected[0] = p_WT_d[0];
+  p_WT_corrected[1] = p_WT_d[1];
+  p_WT_corrected[2] = Xd_WT.translation()[2]; // projection.
 
-  auto omega_TC = Ninv * V_TC_.head(3);
-  auto omega_TrC = R_TrT * omega_TC;
+  std::cout << X_WT.translation()[2] << std::endl;
+  std::cout << p_WT_corrected[2] << std::endl;
+  std::cout << "===============" << std::endl;
 
-  // convert omega to rpydot on TrC. requires rpy of TrC.
-  auto rpy_TrC = drake::math::RollPitchYaw<double>(R_TrT * X_TC_.rotation());
-  double r_TrC = rpy_TrC.roll_angle();
-  double p_TrC = rpy_TrC.pitch_angle();
-  double y_TrC = rpy_TrC.yaw_angle();
+  // 4. Compute the rotational part of correction.
+  double yd_TC = 0.0; // the desired yaw angle is zero.
+  double pd_TC = (1./Krpy_[1]) * (taud_T_[1] * cos(yd_TC) - taud_T_[0] * sin(yd_TC));
+  double rd_TC = (1./Krpy_[0]) * ((taud_T_[0] * cos(yd_TC) + taud_T_[1] * sin(yd_TC)
+                          ) * cos(pd_TC) - Krpy_[1] * yd_TC * sin(pd_TC));
 
-  Eigen::Matrix3d N;
-  N << cos(y_TrC) / cos(p_TrC), sin(y_TrC) / cos(p_TrC), 0,
-       -sin(y_TrC), cos(y_TrC), 0,
-       cos(y_TrC) * tan(p_TrC), sin(y_TrC) * tan(p_TrC), 1;
+  drake::math::RollPitchYaw<double> rpyd_TC(rd_TC, pd_TC, yd_TC);
+  drake::math::RotationMatrixd Rd_TC(rpyd_TC);
 
-  auto rpydot_TrC = N * omega_TrC;
-
-  // 4. Using F_TrC, Compute the corrected X_TrC_des.
-
-  // xyz_TrC_des is computed by Kxyz^{-1}(F_TrC - Dxyz * V_TrC)
-  Eigen::Vector3d xyz_TrC_des;
-  for (int i = 0; i < 3; i ++) {
-    xyz_TrC_des[i] = (1./ Kxyz_[i]) * (f_TrC[i] - Dxyz_[i] * xyzdot_TrC[i]);
-  }
-
-  // rpy_TrC_des is computed using inverse bushing.
-  // yaw. using w to avoid repetition with y coordinate.
-  double w_TrC_des = (1./ Krpy_[2]) * (tau_TrC[2] - Drpy_[2] * rpydot_TrC[2]);
-  double p_TrC_des = (1./ Krpy_[1]) * (
-    tau_TrC[1] * cos(w_TrC_des) - tau_TrC[0] * sin(w_TrC_des) - Drpy_[1] * rpydot_TrC[1]);
-  double r_TrC_des = (1./ Krpy_[0]) * (cos(p_TrC_des) * (
-    tau_TrC[0] * cos(w_TrC_des) + tau_TrC[1] * sin(w_TrC_des)) - 
-    tau_TrC[2] * sin(p_TrC_des) - Drpy_[0] * rpydot_TrC[0]);
-
-  // Compute rigid transforms based on both components.
-  drake::math::RollPitchYaw<double> rpy_TrC_des(
-    r_TrC_des, p_TrC_des, w_TrC_des);
-
-  drake::math::RigidTransformd X_TrC_des(
-    drake::math::RotationMatrixd(rpy_TrC_des), xyz_TrC_des);
-
-  // The way to think about this equation:
-  // 1. The user should feel a force of lambda = X_TC should be preserved.
-  // 2. the user should be feeling more displacement = X_wT should move more.
-  auto X_WT_corrected = X_WTr * X_TrC_des * X_TC_.inverse();
+  auto R_WT_corrected = X_WT.rotation() * X_TC_.rotation() * Rd_TC.inverse();
+  drake::math::RigidTransformd X_WT_corrected(R_WT_corrected, p_WT_corrected);
 
   // A factor of 0.1 is multiplied because X_WT_corrected is updated from 
   // relative pose, which is published at ~20Hz. Since the robot is sending
   // q_cmd at 200Hz, we apply a zero-order hold this way.
 
-  const Vector6<double> V_WT_desired =
-      0.1 * ComputePoseDiffInCommonFrame(
+  Vector6<double> V_WT_desired =
+      ComputePoseDiffInCommonFrame(
           X_WT.GetAsIsometry3(), X_WT_corrected.GetAsIsometry3()) /
           params_->get_timestep();
 
+  double kp = 0.03;
+  double kd = 0.1;
+
+  Vector6<double> V_WT_corrected = kp * V_WT_desired - kd * V_WT.get_coeffs();
+  
   MatrixX<double> J_WT(6, plant_->num_velocities());
   plant_->CalcJacobianSpatialVelocity(*plant_context_,
                                     drake::multibody::JacobianWrtVariable::kV,
@@ -113,7 +94,7 @@ void AdmittanceTrajectoryPlan::Step(const State &state, double control_period,
 
   DifferentialInverseKinematicsResult result = DoDifferentialInverseKinematics(
       state.q, state.v, X_WT, J_WT,
-      drake::multibody::SpatialVelocity<double>(V_WT_desired), *params_);
+      drake::multibody::SpatialVelocity<double>(V_WT_corrected), *params_);
 
   // 3. Check for errors and integrate.
   if (result.status != DifferentialInverseKinematicsStatus::kSolutionFound) {
@@ -131,7 +112,7 @@ void AdmittanceTrajectoryPlan::Step(const State &state, double control_period,
   }
 }
 
-AdmittanceTrajectoryPlan::~AdmittanceTrajectoryPlan() {
+HybridTrajectoryPlan::~HybridTrajectoryPlan() {
   is_running_ = false;
   // Wait for all threads to terminate.
   for (auto &a : threads_) {
@@ -141,9 +122,9 @@ AdmittanceTrajectoryPlan::~AdmittanceTrajectoryPlan() {
   }
 }
 
-void AdmittanceTrajectoryPlan::SubscribeForceTorque() {
+void HybridTrajectoryPlan::SubscribeForceTorque() {
   auto sub = lcm_->subscribe("FT",
-    &AdmittanceTrajectoryPlan::HandleForceTorqueStatus, this);
+    &HybridTrajectoryPlan::HandleForceTorqueStatus, this);
   sub->setQueueCapacity(1);
   while(true) {
     if (lcm_->handleTimeout(10) < 0) {
@@ -155,9 +136,9 @@ void AdmittanceTrajectoryPlan::SubscribeForceTorque() {
   }
 }
 
-void AdmittanceTrajectoryPlan::SubscribeVelocity() {
+void HybridTrajectoryPlan::SubscribeVelocity() {
   auto sub = lcm_->subscribe("RELATIVE_VELOCITY",
-    &AdmittanceTrajectoryPlan::HandleVelocityStatus, this);
+    &HybridTrajectoryPlan::HandleVelocityStatus, this);
   sub->setQueueCapacity(1);
   while(true) {
     if (lcm_->handleTimeout(10) < 0) {
@@ -169,9 +150,9 @@ void AdmittanceTrajectoryPlan::SubscribeVelocity() {
   }
 }
 
-void AdmittanceTrajectoryPlan::SubscribePose() {
+void HybridTrajectoryPlan::SubscribePose() {
   auto sub = lcm_->subscribe("RELATIVE_POSE",
-    &AdmittanceTrajectoryPlan::HandlePoseStatus, this);
+    &HybridTrajectoryPlan::HandlePoseStatus, this);
   sub->setQueueCapacity(1);
   while(true) {
     if (lcm_->handleTimeout(10) < 0) {
@@ -183,7 +164,7 @@ void AdmittanceTrajectoryPlan::SubscribePose() {
   }
 }
 
-void AdmittanceTrajectoryPlan::HandleForceTorqueStatus(
+void HybridTrajectoryPlan::HandleForceTorqueStatus(
   const lcm::ReceiveBuffer *, const std::string &channel,
   const drake::lcmt_robot_state *status_msg) {
 
@@ -194,7 +175,7 @@ void AdmittanceTrajectoryPlan::HandleForceTorqueStatus(
 }      
 
 
-void AdmittanceTrajectoryPlan::HandleVelocityStatus(
+void HybridTrajectoryPlan::HandleVelocityStatus(
   const lcm::ReceiveBuffer *, const std::string &channel,
   const drake::lcmt_robot_state *status_msg) {
 
@@ -204,7 +185,7 @@ void AdmittanceTrajectoryPlan::HandleVelocityStatus(
     V_TC_ = data_eigen.cast<double>();    
 }
 
-void AdmittanceTrajectoryPlan::HandlePoseStatus(
+void HybridTrajectoryPlan::HandlePoseStatus(
   const lcm::ReceiveBuffer *, const std::string &channel,
   const drake::lcmt_robot_state *status_msg) {
 

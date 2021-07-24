@@ -20,9 +20,9 @@
 
 #include "plans/plan_base.h"
 
-class AdmittanceTrajectoryPlan : public PlanBase {
+class RigidTrajectoryPlan : public PlanBase {
 public:
-  AdmittanceTrajectoryPlan(
+  RigidTrajectoryPlan(
       drake::trajectories::PiecewiseQuaternionSlerp<double> quat_traj,
       drake::trajectories::PiecewisePolynomial<double> xyz_traj,
       drake::math::RigidTransformd X_ET,
@@ -30,11 +30,13 @@ public:
       const drake::multibody::Frame<double> &frame_E,
       double control_time_step,
       const Eigen::Vector3d Krpy, const Eigen::Vector3d Drpy,
-      const Eigen::Vector3d Kxyz, const Eigen::Vector3d Dxyz)
+      const Eigen::Vector3d Kxyz, const Eigen::Vector3d Dxyz,      
+      const Eigen::Vector3d taud_T, const Eigen::Vector3d fd_W)
       : PlanBase(plant), quat_traj_(std::move(quat_traj)),
         X_ET_(std::move(X_ET)), xyz_traj_(std::move(xyz_traj)),
         frame_E_(frame_E), lcm_(std::make_unique<lcm::LCM>()),
-        Krpy_(Krpy), Drpy_(Drpy), Kxyz_(Kxyz), Dxyz_(Dxyz) {
+        Krpy_(Krpy), Drpy_(Drpy), Kxyz_(Kxyz), Dxyz_(Dxyz), 
+        taud_T_(taud_T), fd_W_(fd_W) {
 
     params_ = std::make_unique<
         drake::manipulation::planner::DifferentialInverseKinematicsParameters>(
@@ -46,25 +48,27 @@ public:
     // Initialize LCM.
     is_running_ = true;
     threads_["subscribe_force_torque"] = 
-      std::thread(&AdmittanceTrajectoryPlan::SubscribeForceTorque, this);
+      std::thread(&RigidTrajectoryPlan::SubscribeForceTorque, this);
     threads_["subscribe_velocity"] = 
-      std::thread(&AdmittanceTrajectoryPlan::SubscribeVelocity, this);      
+      std::thread(&RigidTrajectoryPlan::SubscribeVelocity, this);      
     threads_["subscribe_pose"] = 
-      std::thread(&AdmittanceTrajectoryPlan::SubscribePose, this);
+      std::thread(&RigidTrajectoryPlan::SubscribePose, this);
 
     // Initialize FT / relative velocity to zero.
     F_TC_ = Eigen::VectorXd::Zero(6);
     V_TC_ = Eigen::VectorXd::Zero(6);
     X_TC_ = drake::math::RigidTransformd();
 
+    std::cout << taud_T_ << std::endl;
+    std::cout << fd_W_ << std::endl; 
     std::cout << Krpy_ << std::endl;
     std::cout << Drpy_ << std::endl;
     std::cout << Kxyz_ << std::endl;
     std::cout << Dxyz_ << std::endl;
-    
+           
   }
 
-  ~AdmittanceTrajectoryPlan() override;
+  ~RigidTrajectoryPlan() override;
 
   void SubscribePose();
   void SubscribeForceTorque();
@@ -114,6 +118,10 @@ private:
   Eigen::VectorXd F_TC_; // force-torque received from lcm.
   Eigen::VectorXd V_TC_; // spatial velocity received from lcm.
   drake::math::RigidTransformd X_TC_; // spatial pose received from lcm.  
+
+  // desired torques and forces.
+  Eigen::Vector3d taud_T_; // torque seen from the tool frame.
+  Eigen::Vector3d fd_W_; // force seen from the world frame.
 
   // Bushing quantities
   Eigen::Vector3d Krpy_;

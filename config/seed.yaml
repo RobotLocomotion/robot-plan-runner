@@ -15,10 +15,11 @@ robot_ee_body_name: "iiwa_link_7"
 
 # Control Parameters
 control_period: 0.005
-q_threshold: 0.05 # norm between current q and commanded q.
+q_threshold: 0.1 # norm between current q and commanded q.
 
 # SEED parameters.
-Krpy: [0.2, 0.2, 0.2]
-Drpy: [0.05, 0.05, 0.05]
-Kxyz: [200.0, 200.0, 200.0]
-Dxyz: [50.0, 50.0, 50.0]
+Krpy: [1.0, 1.0, 1.0]
+Drpy: [0.1, 0.1, 0.1]
+Kxyz: [1000.0, 1000.0, 1000.0]
+Dxyz: [100.0, 100.0, 100.0]
+
