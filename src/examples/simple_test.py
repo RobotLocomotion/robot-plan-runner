@@ -35,7 +35,7 @@ time.sleep(1.0)
 
 # Step 2. Test every joint.
 print("Testing joint-space plan by joint flexing.")
-duration = 50
+duration = 30
 t_knots = np.linspace(0, duration, 22)
 q_knots = np.zeros((22, 7))
 
@@ -48,8 +48,6 @@ for i in range(7):
     q_knots[3*i+3,:] = q_knots[3*i+2,:]
     q_knots[3*i+3,i] += 0.2
 
-print(q_knots)
-
 plan_msg1 = calc_joint_space_plan_msg(t_knots, q_knots)
 zmq_client.send_plan(plan_msg1)
 time.sleep(1.0)
@@ -59,8 +57,24 @@ time.sleep(2.0)
 
 
 # Step 3. Go to basic position for task-space demo.
-duration = 3
+duration = 2
 t_knots = np.linspace(0, duration, 2)
+q_knots = np.zeros((2, 7))
+
+q_knots[0,:] = zmq_client.get_current_joint_angles()
+q_knots[1,:] = [0, 0.6, 0.0, -1.75, 0.0, 1.0, 0.0]
+
+plan_msg2 = calc_joint_space_plan_msg(t_knots, q_knots)
+zmq_client.send_plan(plan_msg2)
+time.sleep(1.0)
+zmq_client.wait_for_plan_to_finish()
+
+time.sleep(2.0)
+
+# Step 4. Go to basic position for task-space demo.
+duration = 2
+t_knots = np.linspace(0, duration, 2)
+
 X_WT_lst = []
 X_WT_lst.append(zmq_client.get_current_ee_pose(frame_E))
 X_WT_lst.append(RigidTransform(RollPitchYaw([0, -np.pi, 0]), np.array([0.5, 0.0, 0.5])))
@@ -70,19 +84,27 @@ zmq_client.send_plan(plan_msg2)
 zmq_client.wait_for_plan_to_finish()
 
 # Step 4. Test Cartesian flexing.
-duration = 50
+duration = 30
 t_knots = np.linspace(0, duration, 19)
 q_knots = np.zeros((19, 6))
 
 q_knots[0,:] = np.array([0, -np.pi, 0, 0.5, 0.0, 0.5])
 
-for i in range(6):
+for i in range(0,3):
+    q_knots[3*i+1,:] = q_knots[3*i,:]
+    q_knots[3*i+1,i] += 0.2
+    q_knots[3*i+2,:] = q_knots[3*i+1,:]
+    q_knots[3*i+2,i] -= 0.4
+    q_knots[3*i+3,:] = q_knots[3*i+2,:]
+    q_knots[3*i+3,i] += 0.2
+
+for i in range(3,6):
     q_knots[3*i+1,:] = q_knots[3*i,:]
     q_knots[3*i+1,i] += 0.1
     q_knots[3*i+2,:] = q_knots[3*i+1,:]
     q_knots[3*i+2,i] -= 0.2
     q_knots[3*i+3,:] = q_knots[3*i+2,:]
-    q_knots[3*i+3,i] += 0.1
+    q_knots[3*i+3,i] += 0.1    
 
 X_WT_lst = []
 for i in range(19):
