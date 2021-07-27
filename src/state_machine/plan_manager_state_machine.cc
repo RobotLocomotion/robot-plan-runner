@@ -24,6 +24,13 @@ void PlanManagerStateMachine::SetIiwaPositionCommandIdle(
       msg_iiwa_status.num_joints);
 }
 
+const PlanBase *PlanManagerStateBase::GetCurrentPlan(
+    PlanManagerStateMachine *state_machine, double t_now,
+    const drake::lcmt_iiwa_status &msg_iiwa_status) const {
+  DRAKE_THROW_UNLESS(state_machine->num_plans() == 0);
+  return nullptr;
+}
+
 double PlanManagerStateBase::GetCurrentPlanUpTime(
     const PlanManagerStateMachine *state_machine, double t_now) const {
   string error_msg = "GetCurrentPlanUpTime should not be called in state ";
@@ -50,6 +57,10 @@ bool PlanManagerStateBase::CommandHasError(
 
   bool is_error = is_nan or is_too_far_away;
   if (is_error) {
+    while (!state_machine->plans_.empty()) {
+      // Delete all plans.
+      state_machine->plans_.pop();
+    }
     ChangeState(state_machine, StateError::Instance());
   }
   return is_error;
@@ -64,11 +75,13 @@ bool PlanManagerStateBase::has_received_status_msg() const {
 
 void PlanManagerStateBase::AbortAllPlans(
     PlanManagerStateMachine *state_machine) {
-  state_machine->ChangeState(StateIdle::Instance());
+  ChangeState(state_machine, StateIdle::Instance());
   auto& plans_queue = state_machine->get_mutable_plans_queue();
   while (!plans_queue.empty()) {
     plans_queue.pop();
   }
   state_machine->reset_current_plan_start_time();
   state_machine->reset_iiwa_position_command_idle();
+  spdlog::flush_on(spdlog::level::info);
+  spdlog::info("All plans have been aborted.");
 }

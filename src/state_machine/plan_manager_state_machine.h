@@ -3,6 +3,7 @@
 #include <memory>
 #include <queue>
 #include <yaml-cpp/yaml.h>
+#include <sstream>
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake_lcmtypes/drake/lcmt_iiwa_status.hpp"
@@ -144,6 +145,10 @@ public:
 
   virtual void AbortAllPlans(PlanManagerStateMachine *state_machine);
 
+  virtual const PlanBase *
+  GetCurrentPlan(PlanManagerStateMachine *state_machine, double t_now_seconds,
+                 const drake::lcmt_iiwa_status &msg_iiwa_status) const;
+
   // Pure virtual functions.
   [[nodiscard]] virtual PlanManagerStateTypes get_state_type() const = 0;
 
@@ -152,10 +157,6 @@ public:
                       const drake::lcmt_iiwa_status &msg_iiwa_status) const = 0;
   virtual void PrintCurrentState(const PlanManagerStateMachine *state_machine,
                                  double t_now_seconds) const = 0;
-
-  virtual const PlanBase *
-  GetCurrentPlan(PlanManagerStateMachine *state_machine, double t_now_seconds,
-                 const drake::lcmt_iiwa_status &msg_iiwa_status) const = 0;
 
   // Other functions.
   [[nodiscard]] const std::string &get_state_name() const {
@@ -168,6 +169,10 @@ protected:
 
   static void ChangeState(PlanManagerStateMachine *state_machine,
                           PlanManagerStateBase *new_state) {
+    std::stringstream ss;
+    ss << "[" << state_machine->state_->get_state_name() << "]" << "---->"
+       << "[" << new_state->get_state_name() << "]";
+    spdlog::info(ss.str());
     state_machine->ChangeState(new_state);
   };
 
