@@ -117,6 +117,7 @@ class PlanManagerZmqClient:
         print("plan received by server.")
 
     def wait_for_plan_to_finish(self):
+        # TODO: add timeout.
         while True:
             self.status_msg_lock.acquire()
             self.plan_msg_lock.acquire()

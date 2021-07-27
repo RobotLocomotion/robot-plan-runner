@@ -1,4 +1,5 @@
 import time
+import argparse
 
 import numpy as np
 from pydrake.all import RigidTransform
