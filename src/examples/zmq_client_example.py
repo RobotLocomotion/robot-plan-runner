@@ -1,24 +1,22 @@
 import time
-import sys, argparse
 
 import numpy as np
-
 from pydrake.all import RigidTransform
 
-from plan_runner_client.zmq_client import PlanManagerZmqClient
 from plan_runner_client.calc_plan_msg import (
     calc_joint_space_plan_msg,
     calc_task_space_plan_msg
 )
+from plan_runner_client.zmq_client import PlanManagerZmqClient
 
 zmq_client = PlanManagerZmqClient()
 
 t_knots = np.array([0, 10])
 q0 = zmq_client.get_current_joint_angles()
 
-if type(q0) == type(None):
-    raise RuntimeError("No messages were detected in IIWA_STATUS. " + 
-                        "Is the simulation runnning?")
+if len(q0) == 0:
+    raise RuntimeError("No messages were detected in IIWA_STATUS. " +
+                       "Is the simulation runnning?")
 
 q_knots1 = np.zeros((2, 7))
 q_knots1[:, ] = q0
@@ -57,7 +55,7 @@ def run_task_space_plan():
     X_WE0 = zmq_client.get_current_ee_pose(frame_E)
     X_WT0 = X_WE0.multiply(X_ET)
     X_WT1 = RigidTransform(X_WT0.rotation(),
-                        X_WT0.translation() + np.array([0, 0.2, 0]))
+                           X_WT0.translation() + np.array([0, 0.2, 0]))
     plan_msg = calc_task_space_plan_msg(X_ET, [X_WT0, X_WT1], [0, 5])
     zmq_client.send_plan(plan_msg)
 
@@ -67,7 +65,8 @@ def run_joint_space_plan_loop():
     Send random joint space plan, randomly interrupt, return to home,
     and start over. 
     """
-    # TODO: support WaitForServer, which blocks until the server is in state IDLE.
+    # TODO: support WaitForServer, which blocks until the server is in state
+    #  IDLE.
     while True:
         print("plan sent")
         plan_msg = calc_joint_space_plan_msg([0, duration], q_knots1)
@@ -96,11 +95,10 @@ def generate_doc_string(test_lst):
         doc_string += "[" + test_lst[i].__name__ + "] : "
         doc_string += test_lst[i].__doc__
         doc_string += "\n"
-    return doc_string 
+    return doc_string
 
 
 if __name__ == "__main__":
-
     # New tests should be added in the list.
     test_lst = [
         run_joint_space_plan,

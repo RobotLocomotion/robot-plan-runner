@@ -50,13 +50,16 @@ class IiwaPositionGetter:
             self.lc.handle()
 
     def get_iiwa_position_measured(self):
-        return np.array(self.iiwa_position_measured)
+        if self.iiwa_position_measured:
+            return np.array(self.iiwa_position_measured)
+        return np.array([])
 
 
 class PlanManagerZmqClient:
     def __init__(self):
         self.context = zmq.Context()
         self.plan_client = self.context.socket(zmq.REQ)
+        # TODO: load sockets from config.yml.
         self.plan_client.connect("tcp://localhost:5555")
 
         self.status_subscriber = self.context.socket(zmq.SUB)
@@ -122,10 +125,13 @@ class PlanManagerZmqClient:
             is_plan_finished = (
                 self.last_status_msg.status ==
                 lcmt_plan_status_constants.FINISHED)
+            is_plan_error = (
+                self.last_status_msg.status ==
+                lcmt_plan_status_constants.ERROR)
             self.plan_msg_lock.release()
             self.status_msg_lock.release()
 
-            if is_same_plan and is_plan_finished:
+            if is_same_plan and (is_plan_finished or is_plan_error):
                 break
             time.sleep(0.01)
         print("Final status:", self.last_status_msg.status)
