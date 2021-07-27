@@ -9,7 +9,9 @@ import numpy as np
 
 from pydrake.all import MultibodyPlant, Parser, RigidTransform
 from pydrake.common import FindResourceOrThrow
-from drake import lcmt_iiwa_status, lcmt_robot_plan
+from drake import (
+    lcmt_iiwa_status, lcmt_robot_plan,
+    lcmt_schunk_wsg_status, lcmt_schunk_wsg_command)
 
 from robot_plan_runner import lcmt_plan_status, lcmt_plan_status_constants
 
@@ -51,7 +53,6 @@ class IiwaPositionGetter:
 
     def get_iiwa_position_measured(self):
         return np.array(self.iiwa_position_measured)
-
 
 class PlanManagerZmqClient:
     def __init__(self):
@@ -134,3 +135,46 @@ class PlanManagerZmqClient:
         self.abort_client.send(b"abort")
         s = self.abort_client.recv_string()
         print(s)
+
+class SchunkManager():
+    def __init__(self, force_limit=10.0):
+        self.lc = lcm.LCM()
+        sub = self.lc.subscribe("SCHUNK_WSG_STATUS", self.sub_callback)
+        sub.set_queue_capacity(1)
+        self.schunk_position_measured = None
+        self.schunk_position_commanded = None
+        self.t1 = threading.Thread(target=self.update_schunk_position_measured)
+        self.t1.start()
+        self.force_limit = force_limit
+
+    def sub_callback(self, channel, data):
+        schunk_status_msg = lcmt_schunk_wsg_status.decode(data)
+        self.schunk_position_measured = schunk_status_msg.actual_position_mm
+
+    def update_schunk_position_measured(self):
+        while True:
+            self.lc.handle()
+
+    def get_schunk_position_measured(self):
+        return np.array(self.schunk_position_measured)
+
+    def send_schunk_position_command(self, command_mm):
+        self.schunk_position_commanded = command_mm
+        msg = lcmt_schunk_wsg_command()
+        msg.utime = 0 # ignore time?
+        msg.target_position_mm = command_mm
+        msg.force = self.force_limit
+        self.lc.publish("SCHUNK_WSG_COMMAND", msg.encode())
+
+    def wait_for_command_to_finish(self):
+        time_now = time.time()
+        while True:
+            reached_goal = (
+                np.abs(self.schunk_position_measured - 
+                    self.schunk_position_commanded) < 0.5)
+            if reached_goal:
+                print("Schunk command is successfully executed.")
+                break
+            if (time.time() - time_now) < 10.0:
+                print("Timeout. 10 seconds elapsed but Schunk failed to reach.")
+                break

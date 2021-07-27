@@ -15,8 +15,9 @@ zmq_client = PlanManagerZmqClient()
 
 t_knots = np.array([0, 10])
 q0 = zmq_client.get_current_joint_angles()
+print(q0)
 
-if type(q0) == type(None):
+if q0.shape == ():
     raise RuntimeError("No messages were detected in IIWA_STATUS. " + 
                         "Is the simulation runnning?")
 
@@ -53,8 +54,9 @@ def run_task_space_plan():
     """Test task space plan."""
     frame_E = zmq_client.plant.GetFrameByName('iiwa_link_7')
     X_ET = RigidTransform()
-    X_ET.set_translation([0.1, 0, 0])
+    X_ET.set_translation([0.0, 0, 0])
     X_WE0 = zmq_client.get_current_ee_pose(frame_E)
+    print(X_WE0.translation())
     X_WT0 = X_WE0.multiply(X_ET)
     X_WT1 = RigidTransform(X_WT0.rotation(),
                         X_WT0.translation() + np.array([0, 0.2, 0]))
