@@ -4,9 +4,6 @@
 class StateInit : public PlanManagerStateBase {
 public:
   static PlanManagerStateBase *Instance();
-  const PlanBase *
-  GetCurrentPlan(PlanManagerStateMachine *state_machine, double t_now,
-                 const drake::lcmt_iiwa_status &msg_iiwa_status) const override;
 
   [[nodiscard]] bool has_received_status_msg() const override { return false; };
 

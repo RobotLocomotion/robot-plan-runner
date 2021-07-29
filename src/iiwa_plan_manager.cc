@@ -66,11 +66,10 @@ void IiwaPlanManager::CalcCommandFromStatus() {
 }
 
 [[noreturn]] void IiwaPlanManager::PrintStateMachineStatus() const {
-  using namespace std::chrono_literals;
   TimePoint current_start_time = std::chrono::high_resolution_clock::now();
   TimePoint next_start_time(current_start_time);
-  const auto interval = 1000ms;
-
+  const auto interval = std::chrono::milliseconds(
+      static_cast<int>(config_["print_period_seconds"].as<double>() * 1000));
   while (true) {
     current_start_time = std::chrono::high_resolution_clock::now();
     next_start_time = current_start_time + interval;
@@ -198,8 +197,43 @@ void IiwaPlanManager::HandleIiwaStatus(
     // Lock state machine.
     std::lock_guard<std::mutex> lock(mutex_state_machine_);
 
-    // Get current plan.
+    /* Get current plan.
+     * Init: return nullptr. throws if state_machine.plans_ is not empty.
+     * Idle: Ditto.
+     * Error: Ditto.
+     * Running:
+     *   - If this is the first control tick of a new plan:
+     *       - set state_machine.current_plan_start_time_seconds_ to the
+     *         current time, return state_machine.plans_.front().
+     *   - If the current plan has ended (by comparing its uptime
+     *     against its duration):
+     *       - set state_machine.current_plan_start_time_seconds_ to the
+     *         current time (not useful).
+     *       - remove the current plan from state_machine.plans_
+     *
+     *    - If state_machine.plans_ is empty:
+     *       - set state_machine.current_plan_start_time_seconds_ to nullptr.
+     *       - set state_machine.iiwa_position_command_idle_ to nullptr.
+     *       - change state to IDLE.
+     */
     plan = state_machine_->GetCurrentPlan(t_now, *status_msg);
+
+    /*
+     * ReceiveNewStatusMsg.
+     * Init:
+     *   - set state_machine.iiwa_position_command_idle_ to
+     *     status_msg.joint_position_measured.
+     *   - change state to IDLE.
+     * Idle:
+     *   - check if state_machine.iiwa_position_command_idle_ is nullptr,
+     *     - If true, do nothing.
+     *     - If false, set state_machine.iiwa_position_command_idle_ to
+     *       status_msg.joint_position_measured.
+     * Running:
+     *   - do nothing.
+     * Error:
+     *   - do nothing.
+     */
     state_machine_->ReceiveNewStatusMsg(*status_msg);
 
     // Compute command.
@@ -240,22 +274,11 @@ void IiwaPlanManager::HandleIiwaStatus(
   zmq::message_t msg;
   while (true) {
     auto res = abort_server.recv(msg, zmq::recv_flags::none);
-
     {
       std::lock_guard<std::mutex> lock(mutex_state_machine_);
       state_machine_->AbortAllPlans();
     }
-
     res = abort_server.send(zmq::str_buffer("plans_aborted"),
                             zmq::send_flags::none);
-
-    double t_now =
-        std::chrono::duration_cast<DoubleSeconds>(
-            std::chrono::high_resolution_clock::now().time_since_epoch())
-            .count();
-    auto t_up = state_machine_->get_state_machine_up_time(t_now);
-
-    cout << "t = " << t_up << ". [INFO]: all plans have been aborted. "
-         << "Returning to [IDLE]." << endl;
   }
 }

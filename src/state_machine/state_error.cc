@@ -22,18 +22,21 @@ bool StateError::CommandHasError(const State &state, const Command &cmd,
 
 void StateError::PrintCurrentState(const PlanManagerStateMachine *state_machine,
                                    double t_now_seconds) const {
-  std::string msg("t = ");
-  msg +=
-      std::to_string(state_machine->get_state_machine_up_time(t_now_seconds));
-  msg += (". [ERROR]: ");
+  std::string msg;
+  msg += ("[ERROR]: ");
   msg += "Number of plans: ";
   msg += std::to_string(state_machine->num_plans());
-  msg += ".";
-  cout << msg << endl;
+  msg += ". t = ";
+  msg +=
+      std::to_string(state_machine->get_state_machine_up_time(t_now_seconds));
+  spdlog::critical(msg);
 }
 
 void StateError::QueueNewPlan(PlanManagerStateMachine *state_machine,
                               std::unique_ptr<PlanBase> plan) {
-  cout << "[ERROR]: received plan is discarded."
-       << "Number of plans: " << state_machine->num_plans() << "." << endl;
+  std::string msg("[ERROR]: received plan is discarded.");
+  msg += "Number of plans: ";
+  msg += std::to_string(state_machine->num_plans());
+  msg += ".";
+  spdlog::critical(msg);
 }

@@ -12,13 +12,6 @@ PlanManagerStateBase *StateIdle::Instance() {
   return instance_;
 }
 
-const PlanBase *StateIdle::GetCurrentPlan(
-    PlanManagerStateMachine *state_machine, double t_now,
-    const drake::lcmt_iiwa_status &msg_iiwa_status) const {
-  DRAKE_THROW_UNLESS(state_machine->num_plans() == 0);
-  return nullptr;
-}
-
 void StateIdle::QueueNewPlan(PlanManagerStateMachine *state_machine,
                              std::unique_ptr<PlanBase> plan) {
   auto &plan_queue = state_machine->get_mutable_plans_queue();
@@ -28,14 +21,14 @@ void StateIdle::QueueNewPlan(PlanManagerStateMachine *state_machine,
 
 void StateIdle::PrintCurrentState(const PlanManagerStateMachine *state_machine,
                                   double t_now_seconds) const {
-  std::string msg("t = ");
-  msg +=
-      std::to_string(state_machine->get_state_machine_up_time(t_now_seconds));
-  msg += (". [IDLE]: waiting for new plans. ");
+  std::string msg;
+  msg += ("[IDLE]: waiting for new plans. ");
   msg += "Number of plans: ";
   msg += std::to_string(state_machine->num_plans());
-  msg += ".";
-  cout << msg << endl;
+  msg += ". t = ";
+  msg +=
+      std::to_string(state_machine->get_state_machine_up_time(t_now_seconds));
+  spdlog::info(msg);
 }
 
 void StateIdle::ReceiveNewStatusMsg(
