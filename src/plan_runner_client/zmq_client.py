@@ -144,7 +144,7 @@ class PlanManagerZmqClient:
         print(s)
 
 class SchunkManager():
-    def __init__(self, force_limit=10.0):
+    def __init__(self, force_limit=40.0):
         self.lc = lcm.LCM()
         sub = self.lc.subscribe("SCHUNK_WSG_STATUS", self.sub_callback)
         sub.set_queue_capacity(1)
@@ -174,6 +174,11 @@ class SchunkManager():
         self.lc.publish("SCHUNK_WSG_COMMAND", msg.encode())
 
     def wait_for_command_to_finish(self):
+        # NOTE(terry-suh): Note that when doing a grasp, the commanded position
+        # typically penetrates the object, and therefore the actual position 
+        # will never reach the desired position, causing this method to hang
+        # indefinitely. In this case, it is more advisable to simply wait for 
+        # a set time using time.sleep instead of calling this method.
         time_now = time.time()
         while True:
             reached_goal = (
@@ -182,6 +187,6 @@ class SchunkManager():
             if reached_goal:
                 print("Schunk command is successfully executed.")
                 break
-            if (time.time() - time_now) < 10.0:
-                print("Timeout. 10 seconds elapsed but Schunk failed to reach.")
+            if (time.time() - time_now) < 60.0:
+                print("Timeout. 60 seconds elapsed but Schunk failed to reach.")
                 break
