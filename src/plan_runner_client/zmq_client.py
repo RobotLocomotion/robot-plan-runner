@@ -97,6 +97,10 @@ class PlanManagerZmqClient:
         # iiwa7 plant.
         self.plant = build_iiwa7_plant()
 
+        # names of the enum in lcmt_plan_status_constants
+        self.plan_stats_dict = {
+            0: "RUNNING", 1: "DISCARDED", 2: "ERROR", 3: "FINISHED"}
+
     def subscribe_to_status(self):
         while True:
             msg = self.status_subscriber.recv()
@@ -149,7 +153,7 @@ class PlanManagerZmqClient:
             if is_same_plan and (is_plan_finished or is_plan_error):
                 break
             time.sleep(0.01)
-        print("Final status:", status_msg.status)
+        print("Final status:", self.plan_stats_dict[status_msg.status])
 
     def abort(self):
         self.abort_client.send(b"abort")
