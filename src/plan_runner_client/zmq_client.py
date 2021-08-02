@@ -48,8 +48,7 @@ class IiwaPositionGetter:
     def sub_callback(self, channel, data):
         iiwa_status_msg = lcmt_iiwa_status.decode(data)
         self.msg_lock.acquire()
-        self.iiwa_position_measured = np.array(
-            iiwa_status_msg.joint_position_measured)
+        self.iiwa_position_measured = iiwa_status_msg.joint_position_measured
         self.msg_lock.release()
 
     def update_iiwa_position_measured(self):
@@ -208,6 +207,6 @@ class SchunkManager:
             if reached_goal:
                 print("Schunk command is successfully executed.")
                 break
-            if (time.time() - time_now) < 60.0:
+            if (time.time() - time_now) > 60.0:
                 print("Timeout. 60 seconds elapsed but Schunk failed to reach.")
                 break
