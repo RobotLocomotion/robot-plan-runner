@@ -1,6 +1,7 @@
 import time
 import threading
 import sys
+import copy
 
 import zmq
 import lcm
@@ -40,21 +41,29 @@ class IiwaPositionGetter:
         sub = self.lc.subscribe("IIWA_STATUS", self.sub_callback)
         sub.set_queue_capacity(1)
         self.iiwa_position_measured = None
+        self.msg_lock = threading.Lock()
         self.t1 = threading.Thread(target=self.update_iiwa_position_measured)
         self.t1.start()
 
     def sub_callback(self, channel, data):
         iiwa_status_msg = lcmt_iiwa_status.decode(data)
-        self.iiwa_position_measured = iiwa_status_msg.joint_position_measured
+        self.msg_lock.acquire()
+        self.iiwa_position_measured = np.array(
+            iiwa_status_msg.joint_position_measured)
+        self.msg_lock.release()
 
     def update_iiwa_position_measured(self):
         while True:
             self.lc.handle()
 
     def get_iiwa_position_measured(self):
+        iiwa_position_measured = np.array([])
+        self.msg_lock.acquire()
         if self.iiwa_position_measured:
-            return np.array(self.iiwa_position_measured)
-        return np.array([])
+            iiwa_position_measured = np.array(self.iiwa_position_measured)
+        self.msg_lock.release()
+        return iiwa_position_measured
+
 
 class PlanManagerZmqClient:
     def __init__(self):
@@ -98,6 +107,12 @@ class PlanManagerZmqClient:
             self.last_status_msg = lcm_msg
             self.status_msg_lock.release()
 
+    def get_plan_status(self):
+        self.status_msg_lock.acquire()
+        status_msg = copy.deepcopy(self.last_status_msg)
+        self.status_msg_lock.release()
+        return status_msg
+
     def get_current_ee_pose(self, frame_E):
         context = self.plant.CreateDefaultContext()
         q = self.iiwa_position_getter.get_iiwa_position_measured()
@@ -110,9 +125,9 @@ class PlanManagerZmqClient:
 
     def send_plan(self, plan_msg):
         self.plan_msg_lock.acquire()
-        self.last_plan_msg = plan_msg
+        self.last_plan_msg = copy.deepcopy(plan_msg)
         self.plan_msg_lock.release()
-        self.plan_client.send(self.last_plan_msg.encode())
+        self.plan_client.send(plan_msg.encode())
         msg = self.plan_client.recv()
         assert msg == b'plan_received'
         print("plan received by server.")
@@ -120,50 +135,56 @@ class PlanManagerZmqClient:
     def wait_for_plan_to_finish(self):
         # TODO: add timeout.
         while True:
-            self.status_msg_lock.acquire()
+            status_msg = self.get_plan_status()
             self.plan_msg_lock.acquire()
             is_same_plan = (
-                self.last_plan_msg.utime == self.last_status_msg.utime)
+                self.last_plan_msg.utime == status_msg.utime)
             is_plan_finished = (
-                self.last_status_msg.status ==
+                status_msg.status ==
                 lcmt_plan_status_constants.FINISHED)
             is_plan_error = (
-                self.last_status_msg.status ==
+                status_msg.status ==
                 lcmt_plan_status_constants.ERROR)
             self.plan_msg_lock.release()
-            self.status_msg_lock.release()
 
             if is_same_plan and (is_plan_finished or is_plan_error):
                 break
             time.sleep(0.01)
-        print("Final status:", self.last_status_msg.status)
+        print("Final status:", status_msg.status)
 
     def abort(self):
         self.abort_client.send(b"abort")
         s = self.abort_client.recv_string()
         print(s)
 
-class SchunkManager():
+
+class SchunkManager:
     def __init__(self, force_limit=40.0):
         self.lc = lcm.LCM()
         sub = self.lc.subscribe("SCHUNK_WSG_STATUS", self.sub_callback)
         sub.set_queue_capacity(1)
         self.schunk_position_measured = None
         self.schunk_position_commanded = None
+        self.msg_lock = threading.Lock()
         self.t1 = threading.Thread(target=self.update_schunk_position_measured)
         self.t1.start()
         self.force_limit = force_limit
 
     def sub_callback(self, channel, data):
         schunk_status_msg = lcmt_schunk_wsg_status.decode(data)
+        self.msg_lock.acquire()
         self.schunk_position_measured = schunk_status_msg.actual_position_mm
+        self.msg_lock.release()
 
     def update_schunk_position_measured(self):
         while True:
             self.lc.handle()
 
     def get_schunk_position_measured(self):
-        return np.array(self.schunk_position_measured)
+        self.msg_lock.acquire()
+        p = np.array(self.schunk_position_measured)
+        self.msg_lock.release()
+        return p
 
     def send_schunk_position_command(self, command_mm):
         self.schunk_position_commanded = command_mm
@@ -182,8 +203,8 @@ class SchunkManager():
         time_now = time.time()
         while True:
             reached_goal = (
-                np.abs(self.schunk_position_measured - 
-                    self.schunk_position_commanded) < 0.5)
+                np.abs(self.get_schunk_position_measured() -
+                       self.schunk_position_commanded) < 0.5)
             if reached_goal:
                 print("Schunk command is successfully executed.")
                 break
