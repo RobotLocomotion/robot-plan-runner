@@ -80,7 +80,7 @@ public:
   // Stores lcmt_iiwa_status.joint_position_measured in
   //  iiwa_position_command_idle_.
   void
-  SetIiwaPositionCommandIdle(const drake::lcmt_iiwa_status &msg_iiwa_status);
+  SetIiwaPositionCommandIdle(const Eigen::Ref<const Eigen::VectorXd> &q_cmd);
 
   [[nodiscard]] const Eigen::VectorXd &get_iiwa_position_command_idle() const {
     return *iiwa_position_command_idle_;

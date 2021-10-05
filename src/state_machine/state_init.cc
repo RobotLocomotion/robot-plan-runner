@@ -15,7 +15,9 @@ PlanManagerStateBase *StateInit::Instance() {
 void StateInit::ReceiveNewStatusMsg(
     PlanManagerStateMachine *state_machine,
     const drake::lcmt_iiwa_status &msg_iiwa_status) const {
-  state_machine->SetIiwaPositionCommandIdle(msg_iiwa_status);
+  state_machine->SetIiwaPositionCommandIdle(Eigen::Map<const Eigen::VectorXd>(
+      msg_iiwa_status.joint_position_commanded.data(),
+      msg_iiwa_status.num_joints));
   ChangeState(state_machine, StateIdle::Instance());
 }
 
@@ -26,8 +28,8 @@ void StateInit::QueueNewPlan(PlanManagerStateMachine *state_machine,
 }
 
 bool StateInit::CommandHasError(const State &state, const Command &cmd,
-                     PlanManagerStateMachine *state_machine,
-                     const double q_threshold) {
+                                PlanManagerStateMachine *state_machine,
+                                const double q_threshold) {
   std::string error_msg = "CommandHasError should not be called in state ";
   error_msg += get_state_name();
   error_msg += ".";

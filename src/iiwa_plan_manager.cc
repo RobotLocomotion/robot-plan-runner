@@ -213,7 +213,6 @@ void IiwaPlanManager::HandleIiwaStatus(
      *
      *    - If state_machine.plans_ is empty:
      *       - set state_machine.current_plan_start_time_seconds_ to nullptr.
-     *       - set state_machine.iiwa_position_command_idle_ to nullptr.
      *       - change state to IDLE.
      */
     plan = state_machine_->GetCurrentPlan(t_now, *status_msg);
@@ -225,10 +224,7 @@ void IiwaPlanManager::HandleIiwaStatus(
      *     status_msg.joint_position_measured.
      *   - change state to IDLE.
      * Idle:
-     *   - check if state_machine.iiwa_position_command_idle_ is nullptr,
-     *     - If true, do nothing.
-     *     - If false, set state_machine.iiwa_position_command_idle_ to
-     *       status_msg.joint_position_measured.
+     *   - do nothing.
      * Running:
      *   - do nothing.
      * Error:
@@ -264,6 +260,7 @@ void IiwaPlanManager::HandleIiwaStatus(
     }
     lcm_status_command_->publish(
         config_["lcm_command_channel"].as<std::string>(), &cmd_msg);
+    state_machine_->SetIiwaPositionCommandIdle(c.q_cmd);
   }
 }
 

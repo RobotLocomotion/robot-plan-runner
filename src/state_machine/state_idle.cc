@@ -31,13 +31,3 @@ void StateIdle::PrintCurrentState(const PlanManagerStateMachine *state_machine,
   spdlog::info(msg);
 }
 
-void StateIdle::ReceiveNewStatusMsg(
-    PlanManagerStateMachine *state_machine,
-    const drake::lcmt_iiwa_status &msg_iiwa_status) const {
-  if (!state_machine->is_iiwa_position_command_idle_set()) {
-    // Should be here when transitioning from RUNNING
-    // (1) by calling GetCurrentPlan, when the plan queue is empty;
-    // (2) by calling AbortAllPlans, which empties the plan queue.
-    state_machine->SetIiwaPositionCommandIdle(msg_iiwa_status);
-  }
-}

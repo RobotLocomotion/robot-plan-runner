@@ -1,11 +1,11 @@
 #include "state_machine/plan_manager_state_machine.h"
 #include "state_machine/state_error.h"
-#include "state_machine/state_init.h"
 #include "state_machine/state_idle.h"
+#include "state_machine/state_init.h"
 
-using std::string;
 using std::cout;
 using std::endl;
+using std::string;
 
 PlanManagerStateMachine::PlanManagerStateMachine(
     double state_machine_start_time_seconds, const YAML::Node &config)
@@ -16,12 +16,13 @@ PlanManagerStateMachine::PlanManagerStateMachine(
 }
 
 void PlanManagerStateMachine::SetIiwaPositionCommandIdle(
-    const drake::lcmt_iiwa_status &msg_iiwa_status) {
-  DRAKE_THROW_UNLESS(iiwa_position_command_idle_ == nullptr);
-  iiwa_position_command_idle_ = std::make_unique<Eigen::VectorXd>();
-  *iiwa_position_command_idle_ = Eigen::Map<const Eigen::VectorXd>(
-      msg_iiwa_status.joint_position_measured.data(),
-      msg_iiwa_status.num_joints);
+    const Eigen::Ref<const Eigen::VectorXd> &q_cmd) {
+  if (iiwa_position_command_idle_) {
+    DRAKE_THROW_UNLESS(q_cmd.size() == iiwa_position_command_idle_->size());
+    *iiwa_position_command_idle_ = q_cmd;
+  } else {
+    iiwa_position_command_idle_ = std::make_unique<Eigen::VectorXd>(q_cmd);
+  }
 }
 
 const PlanBase *PlanManagerStateBase::GetCurrentPlan(
@@ -76,12 +77,11 @@ bool PlanManagerStateBase::has_received_status_msg() const {
 void PlanManagerStateBase::AbortAllPlans(
     PlanManagerStateMachine *state_machine) {
   ChangeState(state_machine, StateIdle::Instance());
-  auto& plans_queue = state_machine->get_mutable_plans_queue();
+  auto &plans_queue = state_machine->get_mutable_plans_queue();
   while (!plans_queue.empty()) {
     plans_queue.pop();
   }
   state_machine->reset_current_plan_start_time();
-  state_machine->reset_iiwa_position_command_idle();
   spdlog::flush_on(spdlog::level::info);
   spdlog::info("All plans have been aborted.");
 }
