@@ -2,6 +2,7 @@ import time
 import threading
 import sys
 import copy
+import logging
 
 import zmq
 import lcm
@@ -45,6 +46,27 @@ class IiwaPositionGetter:
         self.t1 = threading.Thread(target=self.update_iiwa_position_measured)
         self.t1.start()
 
+        # TODO: Set up logger (should really do it elsewhere...)
+        self.logger = logging.getLogger()
+        self.logger.setLevel(logging.DEBUG)
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
+
+        # Wait for IIWA_STATUS.
+        self.logger.info("Waiting for iiwa Status...")
+        while True:
+            self.msg_lock.acquire()
+            if self.iiwa_position_measured is not None:
+                self.msg_lock.release()
+                break
+
+            self.msg_lock.release()
+            time.sleep(0.005)  # check at 200Hz
+        self.logger.info("Received!")
+
     def sub_callback(self, channel, data):
         iiwa_status_msg = lcmt_iiwa_status.decode(data)
         self.msg_lock.acquire()
@@ -85,7 +107,7 @@ class PlanManagerZmqClient:
         self.status_subscriber.connect("tcp://localhost:5557")
         self.last_status_msg = None
         self.status_msg_lock = threading.Lock()
-        self.t1 = threading.Thread(target=self.subscribe_to_status, daemon=True)
+        self.t1 = threading.Thread(target=self.subscribe_to_plan_status, daemon=True)
         self.t1.start()
 
         self.abort_client = self.context.socket(zmq.REQ)
@@ -101,7 +123,7 @@ class PlanManagerZmqClient:
         self.plan_stats_dict = {
             0: "RUNNING", 1: "DISCARDED", 2: "ERROR", 3: "FINISHED"}
 
-    def subscribe_to_status(self):
+    def subscribe_to_plan_status(self):
         while True:
             msg = self.status_subscriber.recv()
             lcm_msg_bytes = msg[len(self.channel_name) + 1:]
@@ -163,15 +185,23 @@ class PlanManagerZmqClient:
 
 class SchunkManager:
     def __init__(self, force_limit=40.0):
-        self.lc = lcm.LCM()
-        sub = self.lc.subscribe("SCHUNK_WSG_STATUS", self.sub_callback)
+        self.lc_sub = lcm.LCM()
+        sub = self.lc_sub.subscribe("SCHUNK_WSG_STATUS", self.sub_callback)
         sub.set_queue_capacity(1)
         self.schunk_position_measured = None
-        self.schunk_position_commanded = None
-        self.msg_lock = threading.Lock()
-        self.t1 = threading.Thread(target=self.update_schunk_position_measured)
-        self.t1.start()
         self.force_limit = force_limit
+
+        # status receiving thread.
+        self.msg_lock = threading.Lock()
+        self.t_recv = threading.Thread(target=self.update_schunk_position_measured)
+        self.t_recv.start()
+
+        # command publishing thread.
+        self.lc_pub = lcm.LCM()
+        self.publish_lock = threading.Lock()
+        self.t_pub = threading.Thread(target=self.publish_schunk_position_cmd)
+        self.schunk_position_commanded = None
+        self.t_pub.start()
 
     def sub_callback(self, channel, data):
         schunk_status_msg = lcmt_schunk_wsg_status.decode(data)
@@ -181,7 +211,23 @@ class SchunkManager:
 
     def update_schunk_position_measured(self):
         while True:
-            self.lc.handle()
+            self.lc_sub.handle()
+
+    def publish_schunk_position_cmd(self, utime: int = 0):
+        while True:
+            if self.schunk_position_commanded is None:
+                time.sleep(1 / 20)
+                continue
+            msg = lcmt_schunk_wsg_command()
+            msg.utime = utime
+            self.publish_lock.acquire()
+            msg.target_position_mm = self.schunk_position_commanded
+            self.publish_lock.release()
+            msg.force = self.force_limit
+            self.lc_pub.publish("SCHUNK_WSG_COMMAND", msg.encode())
+
+            # publish at 20Hz.
+            time.sleep(1 / 20)
 
     def get_schunk_position_measured(self):
         self.msg_lock.acquire()
@@ -190,12 +236,9 @@ class SchunkManager:
         return p
 
     def send_schunk_position_command(self, command_mm):
+        self.publish_lock.acquire()
         self.schunk_position_commanded = command_mm
-        msg = lcmt_schunk_wsg_command()
-        msg.utime = 0 # ignore time?
-        msg.target_position_mm = command_mm
-        msg.force = self.force_limit
-        self.lc.publish("SCHUNK_WSG_COMMAND", msg.encode())
+        self.publish_lock.release()
 
     def wait_for_command_to_finish(self):
         # NOTE(terry-suh): Note that when doing a grasp, the commanded position
