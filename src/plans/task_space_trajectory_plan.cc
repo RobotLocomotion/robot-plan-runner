@@ -30,8 +30,6 @@ void TaskSpaceTrajectoryPlan::Step(const State &state, double control_period,
           X_WT.GetAsIsometry3(), X_WT_desired.GetAsIsometry3()) /
           params_->get_timestep();
 
-  std::cout << V_WT_desired << std::endl;
-
   MatrixX<double> J_WT(6, plant_->num_velocities());
   plant_->CalcJacobianSpatialVelocity(*plant_context_,
                                     drake::multibody::JacobianWrtVariable::kV,
@@ -42,8 +40,6 @@ void TaskSpaceTrajectoryPlan::Step(const State &state, double control_period,
   DifferentialInverseKinematicsResult result = DoDifferentialInverseKinematics(
       state.q, state.v, X_WT, J_WT,
       drake::multibody::SpatialVelocity<double>(V_WT_desired), *params_);
-
-  std::cout << result.joint_velocities.value() << std::endl;
 
   // 3. Check for errors and integrate.
   if (result.status != DifferentialInverseKinematicsStatus::kSolutionFound) {
