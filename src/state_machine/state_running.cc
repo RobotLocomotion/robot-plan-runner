@@ -36,7 +36,6 @@ const PlanBase *StateRunning::GetCurrentPlan(
   }
   if (plans.empty()) {
     state_machine->reset_current_plan_start_time();
-    state_machine->reset_iiwa_position_command_idle();
     ChangeState(state_machine, StateIdle::Instance());
     return nullptr;
   }
