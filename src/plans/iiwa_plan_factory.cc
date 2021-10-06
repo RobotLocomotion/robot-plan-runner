@@ -105,7 +105,14 @@ std::unique_ptr<PlanBase> IiwaPlanFactory::MakeTaskSpaceTrajectoryPlan(
   const auto &frame_E =
       plant_->GetFrameByName(config_["robot_ee_body_name"].as<std::string>());
 
+  vector<double> nominal_joint_vector = 
+    config_["robot_nominal_joint"].as<vector<double>>();
+
+  Eigen::VectorXd nominal_joint= Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+    nominal_joint_vector.data(), nominal_joint_vector.size());
+
+
   return std::make_unique<TaskSpaceTrajectoryPlan>(
       std::move(quat_traj), std::move(xyz_traj), X_ET, plant_.get(), frame_E,
-      config_["control_period"].as<double>());
+      config_["control_period"].as<double>(), nominal_joint);
 }
