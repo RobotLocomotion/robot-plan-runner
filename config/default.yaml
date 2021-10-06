@@ -12,7 +12,7 @@ staus_update_period_seconds: 0.01
 robot_sdf_path: "drake/manipulation/models/iiwa_description/iiwa7/iiwa7_no_collision.sdf"
 robot_baselink_name: "iiwa_link_0"
 robot_ee_body_name: "iiwa_link_7"
-robot_nominal_joint: [0.165, 1.22, 0.781, -1.41, 0.415, -1.3, -0.75]
+robot_nominal_joint: [0, 0.6, 0, -1.75, 0, 1.0, 0] # from manipulation station.
 
 # Control Parameters
 control_period: 0.005
