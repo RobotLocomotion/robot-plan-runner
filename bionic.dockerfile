@@ -3,8 +3,8 @@ FROM ubuntu:18.04
 # Install curl and useful transport
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && yes "Y" \
-      | apt-get install --no-install-recommends curl apt-transport-https sudo \
-      ca-certificates libgtest-dev libgflags-dev \
+      | apt-get install --no-install-recommends apt-transport-https curl \
+      ca-certificates libgflags-dev libgtest-dev sudo \
       && rm -rf /var/lib/apt/lists/* \
       && apt-get clean all
 
