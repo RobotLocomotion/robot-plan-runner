@@ -2,6 +2,12 @@
 ![ci_badge](https://github.com/robotlocomotion/robot-plan-runner/actions/workflows/ci.yml/badge.svg)
 
 ---
+This repo requires cppzmq which can be installed by running
+```
+cd robot-plan-runner
+sudo ./scripts/install_cppzmq.sh
+```
+
 This repo uses the [CMake `find_package(drake)` mechanism](https://github.com/RobotLocomotion/drake-external-examples/tree/master/drake_cmake_installed) to find an 
 installed instance of Drake. 
 
