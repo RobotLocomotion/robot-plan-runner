@@ -36,17 +36,21 @@ print("Current end-effector position:")
 print(X_WE)
 time.sleep(1.0)
 
+# Step 2. Test schunk.
+print("Testing Schunk by openning and closing gripper.")
 schunk.send_schunk_position_command(25)
 schunk.wait_for_command_to_finish()
 time.sleep(5.0)
 schunk.send_schunk_position_command(50)
 schunk.wait_for_command_to_finish()
 time.sleep(5.0)
-schunk.send_schunk_position_command(0)
+schunk.send_schunk_position_command(5)
 schunk.wait_for_command_to_finish()
 time.sleep(5.0)
+schunk.send_schunk_position_command(75)
+schunk.wait_for_command_to_finish()
 
-# Step 2. Test every joint.
+# Step 3. Test every joint.
 print("Testing joint-space plan by joint flexing.")
 duration = 30
 t_knots = np.linspace(0, duration, 22)
@@ -67,7 +71,8 @@ time.sleep(1.0)
 zmq_client.wait_for_plan_to_finish()
 time.sleep(2.0)
 
-# Step 3. Go to basic position for task-space demo.
+# Step 4. Go to basic position for task-space demo.
+print("Go to basic positions for task-space demo.")
 duration = 2
 t_knots = np.linspace(0, duration, 2)
 q_knots = np.zeros((2, 7))
@@ -82,7 +87,6 @@ zmq_client.wait_for_plan_to_finish()
 
 time.sleep(2.0)
 
-# Step 4. Go to basic position for task-space demo.
 duration = 2
 t_knots = np.linspace(0, duration, 2)
 
@@ -96,6 +100,7 @@ zmq_client.send_plan(plan_msg2)
 zmq_client.wait_for_plan_to_finish()
 
 # Step 4. Test Cartesian flexing.
+print("Testing task-space plan by Cartesian flexing.")
 duration = 40
 div = 5
 t_knots = np.linspace(0, duration, 1 + div * 6)
