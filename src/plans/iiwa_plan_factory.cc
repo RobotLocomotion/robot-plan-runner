@@ -17,6 +17,9 @@ using std::endl;
 using std::vector;
 
 IiwaPlanFactory::IiwaPlanFactory(const YAML::Node &config) : config_(config) {
+  // Constructs a MultibodyPlant contianing on the IIWA robot with its link 0
+  // welded to the world frame. This is the plant to be used by all Plans
+  // constructed by this factory, if the plan needs a plant.
   plant_ = std::make_unique<drake::multibody::MultibodyPlant<double>>(1e-3);
   auto parser = drake::multibody::Parser(plant_.get());
 

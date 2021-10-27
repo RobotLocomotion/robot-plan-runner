@@ -6,14 +6,6 @@
 #include "drake/multibody/plant/multibody_plant.h"
 #include <Eigen/Dense>
 
-// Description of a single contact.
-struct ContactInfo {
-  Eigen::Vector3d contact_force;                 // in world frame.
-  Eigen::Vector3d contact_point;                 // in world frame.
-  drake::multibody::BodyIndex contact_link_idx;  // tied to a specific MBP.
-  std::optional<Eigen::Vector3d> contact_normal; // in world frame?
-};
-
 struct State {
   State() = default;
   State(const Eigen::Ref<const Eigen::VectorXd> &q,
@@ -23,7 +15,6 @@ struct State {
   Eigen::VectorXd q;
   Eigen::VectorXd v;
   Eigen::VectorXd tau_ext;
-  std::optional<std::vector<ContactInfo>> contact_results;
 };
 
 struct Command {
@@ -48,5 +39,7 @@ public:
   [[nodiscard]] virtual double duration() const = 0;
 
 protected:
+  // If a child Plan needs an MBP of the robot, it needs to get it from the
+  // Factory which constructs the Plan.
   drake::multibody::MultibodyPlant<double> const *const plant_{nullptr};
 };

@@ -20,10 +20,11 @@ public:
       drake::math::RigidTransformd X_ET,
       const drake::multibody::MultibodyPlant<double> *plant,
       const drake::multibody::Frame<double> &frame_E,
-      double control_time_step, Eigen::VectorXd nominal_joint_position)
+      double control_time_step,
+      Eigen::VectorXd nominal_joint_position)
       : PlanBase(plant), quat_traj_(std::move(quat_traj)),
         X_ET_(std::move(X_ET)), xyz_traj_(std::move(xyz_traj)),
-        frame_E_(frame_E), nominal_joint_position_(nominal_joint_position) {
+        frame_E_(frame_E) {
 
     params_ = std::make_unique<
         drake::manipulation::planner::DifferentialInverseKinematicsParameters>(
@@ -46,7 +47,6 @@ private:
   const drake::trajectories::PiecewiseQuaternionSlerp<double> quat_traj_;
   const drake::trajectories::PiecewisePolynomial<double> xyz_traj_;
   const drake::math::RigidTransformd X_ET_;
-  const Eigen::VectorXd nominal_joint_position_;
 
   // frame of end-effector body + offset.
   const drake::multibody::Frame<double> &frame_E_;
