@@ -38,7 +38,6 @@ private:
 
   // frame of end-effector body + offset.
   const drake::multibody::Frame<double> &frame_E_;
-
   std::unique_ptr<drake::systems::Context<double>> plant_context_;
   std::unique_ptr<
       drake::manipulation::planner::DifferentialInverseKinematicsParameters>

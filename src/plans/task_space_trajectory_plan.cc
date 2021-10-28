@@ -8,9 +8,6 @@ using drake::manipulation::planner::DifferentialInverseKinematicsResult;
 using drake::manipulation::planner::DifferentialInverseKinematicsStatus;
 using drake::manipulation::planner::internal::DoDifferentialInverseKinematics;
 
-using std::cout;
-using std::endl;
-
 TaskSpaceTrajectoryPlan::TaskSpaceTrajectoryPlan(
     drake::trajectories::PiecewiseQuaternionSlerp<double> quat_traj,
     drake::trajectories::PiecewisePolynomial<double> xyz_traj,
@@ -48,12 +45,12 @@ void TaskSpaceTrajectoryPlan::Step(const State &state, double control_period,
                                    X_WT_desired.GetAsIsometry3()) /
       params_->get_timestep();
 
-  MatrixX<double> J_WT(6, plant_->num_velocities());
+  Eigen::MatrixXd J_WT(6, plant_->num_velocities());
   plant_->CalcJacobianSpatialVelocity(
       *plant_context_, drake::multibody::JacobianWrtVariable::kV, frame_E_,
       X_ET_.translation(), frame_W, frame_W, &J_WT);
 
-  DifferentialInverseKinematicsResult result = DoDifferentialInverseKinematics(
+  const auto result = DoDifferentialInverseKinematics(
       state.q, state.v, X_WT, J_WT,
       drake::multibody::SpatialVelocity<double>(V_WT_desired), *params_);
 
@@ -63,10 +60,11 @@ void TaskSpaceTrajectoryPlan::Step(const State &state, double control_period,
     // go to error state.
     cmd->q_cmd = NAN * Eigen::VectorXd::Zero(7);
     // TODO(terry-suh): how do I tell the use that the state machine went to
-    // error because of this precise reason? Printing the error message here
-    // seems like a good start, but we'll need to handle this better.
-    std::cout << "DoDifferentialKinematics Failed to find a solution."
-              << std::endl;
+    //  error because of this precise reason? Printing the error message here
+    //  seems like a good start, but we'll need to handle this better.
+    //  (Pang): I think throwing exceptions here and have them handled at the
+    //   level of PlanManager is a good solution.
+    spdlog::critical("DoDifferentialKinematics Failed to find a solution.");
   } else {
     cmd->q_cmd = state.q + control_period * result.joint_velocities.value();
     cmd->tau_cmd = Eigen::VectorXd::Zero(7);

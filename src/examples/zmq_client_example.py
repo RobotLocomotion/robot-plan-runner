@@ -13,7 +13,7 @@ from plan_runner_client.zmq_client import PlanManagerZmqClient
 zmq_client = PlanManagerZmqClient()
 
 t_knots = np.array([0, 10])
-q0 = zmq_client.get_current_joint_angles()
+q0 = zmq_client.get_joint_angles_measured()
 
 if len(q0) == 0:
     raise RuntimeError("No messages were detected in IIWA_STATUS. " +
@@ -53,7 +53,7 @@ def run_task_space_plan():
     frame_E = zmq_client.plant.GetFrameByName('iiwa_link_7')
     X_ET = RigidTransform()
     X_ET.set_translation([0.1, 0, 0])
-    X_WE0 = zmq_client.get_current_ee_pose(frame_E)
+    X_WE0 = zmq_client.get_ee_pose_commanded(frame_E)
     X_WT0 = X_WE0.multiply(X_ET)
     X_WT1 = RigidTransform(X_WT0.rotation(),
                            X_WT0.translation() + np.array([0, 0.2, 0]))

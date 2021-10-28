@@ -28,8 +28,8 @@ X_ET = RigidTransform(RollPitchYaw(0, -np.pi / 2, 0), np.array([0, 0, 0.255]))
 
 # Step 1. Check that the correct Cartesian position is valid and kinematics
 # are working correctly.
-q_now = zmq_client.get_current_joint_angles()
-X_WE = zmq_client.get_current_ee_pose(frame_E)
+q_now = zmq_client.get_joint_angles_commanded()
+X_WE = zmq_client.get_ee_pose_commanded(frame_E)
 print("Current joint angles:")
 print(q_now)
 print("Current end-effector position:")
@@ -52,7 +52,7 @@ duration = 30
 t_knots = np.linspace(0, duration, 22)
 q_knots = np.zeros((22, 7))
 
-q_knots[0, :] = zmq_client.get_current_joint_angles()
+q_knots[0, :] = zmq_client.get_joint_angles_commanded()
 for i in range(7):
     q_knots[3 * i + 1, :] = q_knots[3 * i, :]
     q_knots[3 * i + 1, i] += 0.2
@@ -63,7 +63,6 @@ for i in range(7):
 
 plan_msg1 = calc_joint_space_plan_msg(t_knots, q_knots)
 zmq_client.send_plan(plan_msg1)
-time.sleep(1.0)
 zmq_client.wait_for_plan_to_finish()
 time.sleep(2.0)
 
@@ -72,12 +71,11 @@ duration = 2
 t_knots = np.linspace(0, duration, 2)
 q_knots = np.zeros((2, 7))
 
-q_knots[0, :] = zmq_client.get_current_joint_angles()
+q_knots[0, :] = zmq_client.get_joint_angles_commanded()
 q_knots[1, :] = [0, 0.3, 0.0, -1.75, 0.0, 1.0, 0.0]
 
 plan_msg2 = calc_joint_space_plan_msg(t_knots, q_knots)
 zmq_client.send_plan(plan_msg2)
-time.sleep(1.0)
 zmq_client.wait_for_plan_to_finish()
 
 time.sleep(2.0)
@@ -87,7 +85,7 @@ duration = 2
 t_knots = np.linspace(0, duration, 2)
 
 X_WT_lst = []
-X_WT_lst.append(zmq_client.get_current_ee_pose(frame_E))
+X_WT_lst.append(zmq_client.get_ee_pose_commanded(frame_E))
 X_WT_lst.append(RigidTransform(RollPitchYaw([0, -np.pi, 0]),
                                np.array([0.5, 0.0, 0.5])))
 
@@ -130,5 +128,4 @@ for i in range(1 + div * 6):
 
 plan_msg3 = calc_task_space_plan_msg(RigidTransform(), X_WT_lst, t_knots)
 zmq_client.send_plan(plan_msg3)
-time.sleep(1.0)
 zmq_client.wait_for_plan_to_finish()
