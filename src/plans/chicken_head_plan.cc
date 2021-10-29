@@ -1,7 +1,9 @@
 #include "plans/chicken_head_plan.h"
+#include "drake/lcm/lcm_messages.h"
 
 using drake::Vector6;
 using drake::math::RigidTransformd;
+using drake::lcmt_robot_state;
 using drake::manipulation::planner::internal::DoDifferentialInverseKinematics;
 using drake::manipulation::planner::DifferentialInverseKinematicsStatus;
 
@@ -24,7 +26,7 @@ ChickenHeadPlan::ChickenHeadPlan(
   owned_lcm_ = std::make_unique<drake::lcm::DrakeLcm>();
   rpe_sub_ = std::make_unique<drake::lcm::Subscriber<drake::lcmt_robot_state>>(
       owned_lcm_.get(), "X_TC");
-  sub_thread_ = std::thread(&ChickenHeadPlan::ReceiveRelativePose, this);
+  sub_thread_ = std::thread(&ChickenHeadPlan::PoseIo, this);
 }
 
 ChickenHeadPlan::~ChickenHeadPlan() {
@@ -32,8 +34,26 @@ ChickenHeadPlan::~ChickenHeadPlan() {
   sub_thread_.join();
 }
 
-void ChickenHeadPlan::ReceiveRelativePose() const {
-  int i = 0;
+lcmt_robot_state GetStateMsgFromTransform(
+    const RigidTransformd& X_WC, int64_t utime) {
+  const auto Q_WC = X_WC.rotation().ToQuaternion();
+  const auto& p_WC = X_WC.translation();
+  lcmt_robot_state msg_X_WC{};
+  msg_X_WC.utime = utime;
+  msg_X_WC.num_joints = 7;
+  msg_X_WC.joint_name = {"qw", "qx", "qy", "qz", "x", "y", "z"};
+  msg_X_WC.joint_position = std::vector<float>(
+      {static_cast<float>(Q_WC.w()),
+       static_cast<float>(Q_WC.x()),
+       static_cast<float>(Q_WC.y()),
+       static_cast<float>(Q_WC.z()),
+       static_cast<float>(p_WC[0]),
+       static_cast<float>(p_WC[1]),
+       static_cast<float>(p_WC[2])});
+  return msg_X_WC;
+}
+
+void ChickenHeadPlan::PoseIo() const {
   while (true) {
     rpe_sub_->clear();
     drake::lcm::LcmHandleSubscriptionsUntil(
@@ -47,28 +67,40 @@ void ChickenHeadPlan::ReceiveRelativePose() const {
     const auto Q_TC =
         Eigen::Quaterniond(q_xyz[0], q_xyz[1], q_xyz[2], q_xyz[3]);
     const auto p_TC = Eigen::Vector3d(q_xyz[4], q_xyz[5], q_xyz[6]);
+
+    drake::math::RigidTransformd X_WC;
     {
       std::lock_guard<std::mutex> lock(mutex_rpe_);
       X_TC_.set_rotation(Q_TC);
       X_TC_.set_translation(p_TC);
+      X_WC = X_WT_ * X_TC_;
     }
+
+    // Publish X_WC.
+    drake::lcm::Publish(
+        owned_lcm_.get(), "X_WC", GetStateMsgFromTransform(X_WC, X_TC_msg.utime));
   }
 }
 
 void ChickenHeadPlan::Step(const State &state, double control_period, double t,
                            Command *cmd) const {
-  RigidTransformd X_WTd;
-  {
-    std::lock_guard<std::mutex> lock(mutex_rpe_);
-    X_WTd = X_WCd_ * X_TC_.inverse();
-  }
-
-  // DiffIk.
+  // Forward kinematics.
   plant_->SetPositions(plant_context_.get(), state.q);
   const auto &frame_W = plant_->world_frame();
   const auto X_WT =
       plant_->CalcRelativeTransform(*plant_context_, frame_W, frame_L7_) *
       X_L7T_;
+
+  // New T_desired.
+  RigidTransformd X_WTd;
+  {
+    std::lock_guard<std::mutex> lock(mutex_rpe_);
+    X_WTd = X_WCd_ * X_TC_.inverse();
+    // Also Update X_WT_.
+    X_WT_ = X_WT;
+  }
+
+  // DiffIk.
   const Vector6<double> V_WT_desired =
       drake::manipulation::planner::ComputePoseDiffInCommonFrame(
           X_WT.GetAsIsometry3(), X_WTd.GetAsIsometry3()) /
@@ -91,4 +123,6 @@ void ChickenHeadPlan::Step(const State &state, double control_period, double t,
     cmd->q_cmd = state.q + control_period * result.joint_velocities.value();
     cmd->tau_cmd = Eigen::VectorXd::Zero(7);
   }
+
+  // Publish X_WC.
 }

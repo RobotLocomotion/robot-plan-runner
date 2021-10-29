@@ -11,12 +11,14 @@ n_q = 7
 X_WL7 = zmq_client.get_ee_pose_commanded(frame_L7)
 
 #%%
+# TODO: these joint names are getting ridiculous... we really need our own LCM types
+#  for plans.
 joint_names = ["qw_chicken", "qx_chicken", "qy_chicken", "qz_chicken", "px_chicken",
                "py_chicken", "pz_chicken"]
-t_knots = [0, 5.]
+t_knots = [0, 60.]
 
 msg_plan = lcmt_robot_plan()
-msg_plan.utime = round(time.time() * 1000)
+msg_plan.utime = round(time.time() * 1e6)
 msg_plan.num_states = 2
 
 for i in range(len(t_knots)):

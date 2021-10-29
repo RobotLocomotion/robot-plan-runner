@@ -147,11 +147,11 @@ class PlanManagerZmqClient:
         self.status_msg_lock.release()
         return status_msg
 
-    def get_ee_pose_measured(self, frame_E: pydrake.multibody.tree.Frame,):
+    def get_ee_pose_measured(self, frame_E: pydrake.multibody.tree.Frame):
         q = self.iiwa_position_getter.get_iiwa_position_measured()
         return self.get_ee_pose_from_joint_angles(frame_E, q)
 
-    def get_ee_pose_commanded(self, frame_E: pydrake.multibody.tree.Frame, ):
+    def get_ee_pose_commanded(self, frame_E: pydrake.multibody.tree.Frame):
         q = self.iiwa_position_getter.get_iiwa_position_commanded()
         return self.get_ee_pose_from_joint_angles(frame_E, q)
 

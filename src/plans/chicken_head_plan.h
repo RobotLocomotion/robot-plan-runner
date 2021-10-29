@@ -19,6 +19,7 @@
  * The plan subscribes to Relative Pose Estimator and receives X_TC.
  * The goal is to have T track Td (Tool_desired), so that
  *  X_WTd * X_TC = X_WCd.
+ *  Also publishes X_WC on the LCM channel "X_WC".
  */
 class ChickenHeadPlan : public PlanBase {
  public:
@@ -46,11 +47,12 @@ class ChickenHeadPlan : public PlanBase {
   params_;
 
   // Relative pose estimator subscription.
-  void ReceiveRelativePose() const;
+  void PoseIo() const;
   std::unique_ptr<drake::lcm::DrakeLcm> owned_lcm_;
   std::unique_ptr<drake::lcm::Subscriber<drake::lcmt_robot_state>> rpe_sub_;
   std::thread sub_thread_;
   std::atomic<bool> stop_flag_{false};
   mutable std::mutex mutex_rpe_;
   mutable drake::math::RigidTransformd X_TC_;
+  mutable drake::math::RigidTransformd X_WT_;
 };

@@ -55,7 +55,6 @@ bool PlanManagerStateBase::CommandHasError(
       cmd.q_cmd.array().isNaN().sum() or cmd.tau_cmd.array().isNaN().sum();
 
   bool is_too_far_away = (state.q - cmd.q_cmd).norm() > q_threshold;
-
   bool is_error = is_nan or is_too_far_away;
   if (is_error) {
     while (!state_machine->plans_.empty()) {
