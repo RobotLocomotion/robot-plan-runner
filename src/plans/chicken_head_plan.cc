@@ -117,8 +117,7 @@ void ChickenHeadPlan::Step(const State &state, double control_period, double t,
 
   // 3. Check for errors and integrate.
   if (result.status != DifferentialInverseKinematicsStatus::kSolutionFound) {
-    cmd->q_cmd = NAN * Eigen::VectorXd::Zero(7);
-    spdlog::critical("DoDifferentialKinematics Failed to find a solution.");
+    throw DiffIkException();
   } else {
     cmd->q_cmd = state.q + control_period * result.joint_velocities.value();
     cmd->tau_cmd = Eigen::VectorXd::Zero(7);

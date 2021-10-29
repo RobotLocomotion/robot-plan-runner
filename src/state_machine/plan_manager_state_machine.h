@@ -50,7 +50,9 @@ public:
   // 1. Nans
   // 2. If cmd.q_cmd and state.q is too far away with a hard-coded threshold.
   //    This threshold is decided by a parameter in the config file.
-  bool CommandHasError(const State &state, const Command &cmd);
+  void CheckCommandForError(const State &state, const Command &cmd);
+
+  void EnterErrorState();
 
   // Empties the plans_ queue and sets the state to IDLE.
   void AbortAllPlans();
@@ -139,9 +141,11 @@ public:
   virtual void QueueNewPlan(PlanManagerStateMachine *state_machine,
                             std::unique_ptr<PlanBase> plan);
 
-  virtual bool CommandHasError(const State &state, const Command &cmd,
-                               PlanManagerStateMachine *state_machine,
-                               const double q_threshold);
+  virtual void CheckCommandForError(const State &state, const Command &cmd,
+                                    PlanManagerStateMachine *state_machine,
+                                    const double q_threshold);
+
+  virtual void EnterErrorState(PlanManagerStateMachine *state_machine);
 
   virtual void AbortAllPlans(PlanManagerStateMachine *state_machine);
 
@@ -162,6 +166,7 @@ public:
   [[nodiscard]] const std::string &get_state_name() const {
     return state_name_;
   };
+
 
 protected:
   explicit PlanManagerStateBase(std::string state_name)
@@ -244,10 +249,14 @@ PlanManagerStateMachine::set_current_plan_start_time(double t_now_seconds) {
   current_plan_start_time_seconds_ = std::make_unique<double>(t_now_seconds);
 }
 
-inline bool PlanManagerStateMachine::CommandHasError(const State &state,
-                                                     const Command &cmd) {
-  return state_->CommandHasError(state, cmd, this,
-                                 config_["q_threshold"].as<double>());
+inline void PlanManagerStateMachine::CheckCommandForError(const State &state,
+                                                          const Command &cmd) {
+  state_->CheckCommandForError(state, cmd, this,
+                               config_["q_threshold"].as<double>());
+}
+
+inline void PlanManagerStateMachine::EnterErrorState() {
+  state_->EnterErrorState(this);
 }
 
 inline void PlanManagerStateMachine::AbortAllPlans() {

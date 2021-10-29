@@ -204,7 +204,7 @@ class PlanManagerZmqClient:
     def abort(self):
         self.abort_client.send(b"abort")
         s = self.abort_client.recv_string()
-        print(s)
+        self.iiwa_position_getter.logger.info(s)
 
 
 class SchunkManager:

@@ -76,6 +76,7 @@ def run_joint_space_plan_loop():
         stop_duration = np.random.rand() * duration
         time.sleep(stop_duration)
         zmq_client.abort()
+        zmq_client.wait_for_plan_to_finish()
         print("plan aborted after t = {}s".format(stop_duration))
 
         # # get current robot position.

@@ -56,15 +56,7 @@ void TaskSpaceTrajectoryPlan::Step(const State &state, double control_period,
 
   // 3. Check for errors and integrate.
   if (result.status != DifferentialInverseKinematicsStatus::kSolutionFound) {
-    // Set the command to NAN so that state machine will detect downstream and
-    // go to error state.
-    cmd->q_cmd = NAN * Eigen::VectorXd::Zero(7);
-    // TODO(terry-suh): how do I tell the use that the state machine went to
-    //  error because of this precise reason? Printing the error message here
-    //  seems like a good start, but we'll need to handle this better.
-    //  (Pang): I think throwing exceptions here and have them handled at the
-    //   level of PlanManager is a good solution.
-    spdlog::critical("DoDifferentialKinematics Failed to find a solution.");
+    throw DiffIkException();
   } else {
     cmd->q_cmd = state.q + control_period * result.joint_velocities.value();
     cmd->tau_cmd = Eigen::VectorXd::Zero(7);

@@ -26,6 +26,29 @@ struct Command {
   Eigen::VectorXd tau_cmd;
 };
 
+struct PlanException : public std::exception {
+  [[nodiscard]] const char* what() const noexcept override = 0;
+};
+
+struct NanException : PlanException {
+  [[nodiscard]] const char* what() const noexcept override {
+    return "Joint angle commands contain Nan.";
+  }
+};
+
+struct TooFarAwayException : PlanException {
+  [[nodiscard]] const char* what() const noexcept override {
+    return "Difference between commanded and measured joint angles are too "
+           "large.";
+  }
+};
+
+struct DiffIkException : PlanException {
+  [[nodiscard]] const char* what() const noexcept override {
+    return "Differential inverse kinematics failed to find a solution.";
+  }
+};
+
 class PlanBase {
 public:
   explicit PlanBase(const drake::multibody::MultibodyPlant<double> *plant)
