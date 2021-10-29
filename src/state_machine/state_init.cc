@@ -27,10 +27,10 @@ void StateInit::QueueNewPlan(PlanManagerStateMachine *state_machine,
                "Received plan is discarded.");
 }
 
-bool StateInit::CommandHasError(const State &state, const Command &cmd,
-                                PlanManagerStateMachine *state_machine,
-                                const double q_threshold) {
-  std::string error_msg = "CommandHasError should not be called in state ";
+void StateInit::CheckCommandForError(const State &state, const Command &cmd,
+                                     PlanManagerStateMachine *state_machine,
+                                     const double q_threshold) {
+  std::string error_msg = "CheckCommandForError should not be called in state ";
   error_msg += get_state_name();
   error_msg += ".";
   throw std::runtime_error(error_msg);

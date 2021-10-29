@@ -4,6 +4,7 @@ import sys
 import copy
 import logging
 
+import pydrake.multibody.tree
 import zmq
 import lcm
 
@@ -41,9 +42,9 @@ class IiwaPositionGetter:
         self.lc = lcm.LCM()
         sub = self.lc.subscribe("IIWA_STATUS", self.sub_callback)
         sub.set_queue_capacity(1)
-        self.iiwa_position_measured = None
+        self.iiwa_status_msg = None
         self.msg_lock = threading.Lock()
-        self.t1 = threading.Thread(target=self.update_iiwa_position_measured)
+        self.t1 = threading.Thread(target=self.update_iiwa_status)
         self.t1.start()
 
         # TODO: Set up logger (should really do it elsewhere...)
@@ -59,7 +60,7 @@ class IiwaPositionGetter:
         self.logger.info("Waiting for iiwa Status...")
         while True:
             self.msg_lock.acquire()
-            if self.iiwa_position_measured is not None:
+            if self.iiwa_status_msg is not None:
                 self.msg_lock.release()
                 break
 
@@ -70,20 +71,28 @@ class IiwaPositionGetter:
     def sub_callback(self, channel, data):
         iiwa_status_msg = lcmt_iiwa_status.decode(data)
         self.msg_lock.acquire()
-        self.iiwa_position_measured = iiwa_status_msg.joint_position_measured
+        self.iiwa_status_msg = iiwa_status_msg
         self.msg_lock.release()
 
-    def update_iiwa_position_measured(self):
+    def update_iiwa_status(self):
         while True:
             self.lc.handle()
 
     def get_iiwa_position_measured(self):
-        iiwa_position_measured = np.array([])
+        q = np.array([])
         self.msg_lock.acquire()
-        if self.iiwa_position_measured:
-            iiwa_position_measured = np.array(self.iiwa_position_measured)
+        if self.iiwa_status_msg:
+            q = np.array(self.iiwa_status_msg.joint_position_measured)
         self.msg_lock.release()
-        return iiwa_position_measured
+        return q
+
+    def get_iiwa_position_commanded(self):
+        q = np.array([])
+        self.msg_lock.acquire()
+        if self.iiwa_status_msg:
+            q = np.array(self.iiwa_status_msg.joint_position_commanded)
+        self.msg_lock.release()
+        return q
 
 
 class PlanManagerZmqClient:
@@ -138,15 +147,26 @@ class PlanManagerZmqClient:
         self.status_msg_lock.release()
         return status_msg
 
-    def get_current_ee_pose(self, frame_E):
-        context = self.plant.CreateDefaultContext()
+    def get_ee_pose_measured(self, frame_E: pydrake.multibody.tree.Frame):
         q = self.iiwa_position_getter.get_iiwa_position_measured()
+        return self.get_ee_pose_from_joint_angles(frame_E, q)
+
+    def get_ee_pose_commanded(self, frame_E: pydrake.multibody.tree.Frame):
+        q = self.iiwa_position_getter.get_iiwa_position_commanded()
+        return self.get_ee_pose_from_joint_angles(frame_E, q)
+
+    def get_ee_pose_from_joint_angles(self, frame_E: pydrake.multibody.tree.Frame,
+                                      q: np.ndarray):
+        context = self.plant.CreateDefaultContext()
         self.plant.SetPositions(context, q)
         return self.plant.CalcRelativeTransform(
             context, self.plant.world_frame(), frame_E)
 
-    def get_current_joint_angles(self):
+    def get_joint_angles_measured(self):
         return self.iiwa_position_getter.get_iiwa_position_measured()
+
+    def get_joint_angles_commanded(self):
+        return self.iiwa_position_getter.get_iiwa_position_commanded()
 
     def send_plan(self, plan_msg):
         self.plan_msg_lock.acquire()
@@ -155,12 +175,15 @@ class PlanManagerZmqClient:
         self.plan_client.send(plan_msg.encode())
         msg = self.plan_client.recv()
         assert msg == b'plan_received'
-        print("plan received by server.")
+        self.iiwa_position_getter.logger.info("plan received by server.")
 
     def wait_for_plan_to_finish(self):
         # TODO: add timeout.
         while True:
             status_msg = self.get_plan_status()
+            if status_msg is None:
+                time.sleep(0.01)
+                continue
             self.plan_msg_lock.acquire()
             is_same_plan = (
                 self.last_plan_msg.utime == status_msg.utime)
@@ -175,12 +198,13 @@ class PlanManagerZmqClient:
             if is_same_plan and (is_plan_finished or is_plan_error):
                 break
             time.sleep(0.01)
-        print("Final status:", self.plan_stats_dict[status_msg.status])
+        self.iiwa_position_getter.logger.info(
+            "Final status: " + self.plan_stats_dict[status_msg.status])
 
     def abort(self):
         self.abort_client.send(b"abort")
         s = self.abort_client.recv_string()
-        print(s)
+        self.iiwa_position_getter.logger.info(s)
 
 
 class SchunkManager:

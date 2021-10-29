@@ -48,23 +48,28 @@ void PlanManagerStateBase::QueueNewPlan(PlanManagerStateMachine *state_machine,
   throw std::runtime_error(error_msg);
 }
 
-bool PlanManagerStateBase::CommandHasError(
+void PlanManagerStateBase::CheckCommandForError(
     const State &state, const Command &cmd,
     PlanManagerStateMachine *state_machine, const double q_threshold) {
   bool is_nan =
       cmd.q_cmd.array().isNaN().sum() or cmd.tau_cmd.array().isNaN().sum();
-
-  bool is_too_far_away = (state.q - cmd.q_cmd).norm() > q_threshold;
-
-  bool is_error = is_nan or is_too_far_away;
-  if (is_error) {
-    while (!state_machine->plans_.empty()) {
-      // Delete all plans.
-      state_machine->plans_.pop();
-    }
-    ChangeState(state_machine, StateError::Instance());
+  if (is_nan) {
+    throw NanException();
   }
-  return is_error;
+
+  const double dq_norm = (state.q - cmd.q_cmd).norm();
+  if (dq_norm > q_threshold) {
+    throw TooFarAwayException();
+  }
+}
+
+void PlanManagerStateBase::EnterErrorState(
+    PlanManagerStateMachine *state_machine) {
+  while (!state_machine->plans_.empty()) {
+    // Delete all plans.
+    state_machine->plans_.pop();
+  }
+  ChangeState(state_machine, StateError::Instance());
 }
 
 bool PlanManagerStateBase::has_received_status_msg() const {

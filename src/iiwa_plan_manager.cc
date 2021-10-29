@@ -17,6 +17,7 @@ using std::endl;
 
 IiwaPlanManager::IiwaPlanManager(YAML::Node config)
     : config_(std::move(config)),
+      lcm_cmd_channel_name_(config_["lcm_command_channel"].as<std::string>()),
       control_period_seconds_(config["control_period"].as<double>()) {
   double t_now_seconds =
       std::chrono::duration_cast<DoubleSeconds>(
@@ -50,18 +51,16 @@ void IiwaPlanManager::Run() {
 }
 
 void IiwaPlanManager::CalcCommandFromStatus() {
-  lcm_status_command_ = std::make_unique<lcm::LCM>();
-  auto sub = lcm_status_command_->subscribe(
-      config_["lcm_status_channel"].as<std::string>(),
-      &IiwaPlanManager::HandleIiwaStatus, this);
-  sub->setQueueCapacity(1);
+  owned_lcm_ = std::make_unique<drake::lcm::DrakeLcm>();
+  iiwa_status_sub_ =
+      std::make_unique<drake::lcm::Subscriber<drake ::lcmt_iiwa_status>>(
+          owned_lcm_.get(), config_["lcm_status_channel"].as<std::string>());
+  // LCM-driven loop.
   while (true) {
-    // >0 if a message was handled,
-    // 0 if the function timed out,
-    // <0 if an error occured.
-    if (lcm_status_command_->handleTimeout(10) < 0) {
-      break;
-    }
+    iiwa_status_sub_->clear();
+    drake::lcm::LcmHandleSubscriptionsUntil(
+        owned_lcm_.get(), [&]() { return iiwa_status_sub_->count() > 0; });
+    HandleIiwaStatus(iiwa_status_sub_->message());
   }
 }
 
@@ -180,19 +179,18 @@ std::vector<uint8_t> PrependLcmMsgWithChannel(const std::string &channel_name,
 }
 
 void IiwaPlanManager::HandleIiwaStatus(
-    const lcm::ReceiveBuffer *, const std::string &channel,
-    const drake::lcmt_iiwa_status *status_msg) {
+    const drake::lcmt_iiwa_status &status_msg) {
   const PlanBase *plan;
   auto t_now = std::chrono::high_resolution_clock::now();
-  const int num_joints = (*status_msg).num_joints;
-  State s(Eigen::Map<const VectorXd>(
-              (*status_msg).joint_position_measured.data(), num_joints),
-          Eigen::Map<const VectorXd>(
-              (*status_msg).joint_velocity_estimated.data(), num_joints),
-          Eigen::Map<const VectorXd>((*status_msg).joint_torque_external.data(),
+  const int num_joints = status_msg.num_joints;
+  State s(Eigen::Map<const VectorXd>(status_msg.joint_position_measured.data(),
+                                     num_joints),
+          Eigen::Map<const VectorXd>(status_msg.joint_velocity_estimated.data(),
+                                     num_joints),
+          Eigen::Map<const VectorXd>(status_msg.joint_torque_external.data(),
                                      num_joints));
   Command c;
-  bool command_has_error;
+  bool command_has_error{true};
   {
     // Lock state machine.
     std::lock_guard<std::mutex> lock(mutex_state_machine_);
@@ -215,7 +213,7 @@ void IiwaPlanManager::HandleIiwaStatus(
      *       - set state_machine.current_plan_start_time_seconds_ to nullptr.
      *       - change state to IDLE.
      */
-    plan = state_machine_->GetCurrentPlan(t_now, *status_msg);
+    plan = state_machine_->GetCurrentPlan(t_now, status_msg);
 
     /*
      * ReceiveNewStatusMsg.
@@ -230,36 +228,43 @@ void IiwaPlanManager::HandleIiwaStatus(
      * Error:
      *   - do nothing.
      */
-    state_machine_->ReceiveNewStatusMsg(*status_msg);
+    state_machine_->ReceiveNewStatusMsg(status_msg);
 
-    // Compute command.
-    if (plan) {
-      const double t_plan = state_machine_->GetCurrentPlanUpTime(t_now);
-      plan->Step(s, control_period_seconds_, t_plan, &c);
-    } else if (state_machine_->get_state_type() ==
-               PlanManagerStateTypes::kStateIdle) {
-      c.q_cmd = state_machine_->get_iiwa_position_command_idle();
-      c.tau_cmd = Eigen::VectorXd::Zero(num_joints);
-    } else {
-      // No commands are sent in state INIT or ERROR.
-      return;
+    try {
+      // Compute command.
+      if (plan) {
+        const double t_plan = state_machine_->GetCurrentPlanUpTime(t_now);
+        plan->Step(s, control_period_seconds_, t_plan, &c);
+      } else if (state_machine_->get_state_type() ==
+                 PlanManagerStateTypes::kStateIdle) {
+        c.q_cmd = state_machine_->get_iiwa_position_command_idle();
+        c.tau_cmd = Eigen::VectorXd::Zero(num_joints);
+      } else {
+        // No commands are sent in state INIT or ERROR.
+        return;
+      }
+
+      // Check command for error.
+      state_machine_->CheckCommandForError(s, c);
+
+      // If no exception has been thrown thus far, there is no error in command.
+      command_has_error = false;
+    } catch (PlanException &e) {
+      state_machine_->EnterErrorState();
+      spdlog::critical(e.what());
     }
-
-    // Check command for error.
-    command_has_error = state_machine_->CommandHasError(s, c);
   }
 
   if (!command_has_error) {
     drake::lcmt_iiwa_command cmd_msg;
     cmd_msg.num_joints = num_joints;
     cmd_msg.num_torques = num_joints;
-    cmd_msg.utime = status_msg->utime;
+    cmd_msg.utime = status_msg.utime;
     for (int i = 0; i < num_joints; i++) {
       cmd_msg.joint_position.push_back(c.q_cmd[i]);
       cmd_msg.joint_torque.push_back(c.tau_cmd[i]);
     }
-    lcm_status_command_->publish(
-        config_["lcm_command_channel"].as<std::string>(), &cmd_msg);
+    drake::lcm::Publish(owned_lcm_.get(), lcm_cmd_channel_name_, cmd_msg);
     state_machine_->SetIiwaPositionCommandIdle(c.q_cmd);
   }
 }
