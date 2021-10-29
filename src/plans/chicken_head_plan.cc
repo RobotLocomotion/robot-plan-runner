@@ -3,8 +3,6 @@
 
 using drake::lcmt_robot_state;
 using drake::Vector6;
-using drake::manipulation::planner::DifferentialInverseKinematicsStatus;
-using drake::manipulation::planner::internal::DoDifferentialInverseKinematics;
 using drake::math::RigidTransformd;
 using drake::math::RotationMatrixd;
 using Eigen::Vector3d;
