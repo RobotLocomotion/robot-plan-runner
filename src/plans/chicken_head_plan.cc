@@ -53,7 +53,7 @@ void ChickenHeadPlan::PoseIo() const {
     rpe_sub_->clear();
     drake::lcm::LcmHandleSubscriptionsUntil(owned_lcm_.get(), [&]() {
       return stop_flag_ or rpe_sub_->count() > 0;
-    });
+    }, 10);
     if (stop_flag_) {
       break;
     }
