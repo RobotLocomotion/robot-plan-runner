@@ -4,6 +4,8 @@
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_robot_state.hpp"
 #include "drake/manipulation/planner/differential_inverse_kinematics.h"
+#include "drake/solvers/gurobi_solver.h"
+#include "drake/solvers/mathematical_program.h"
 #include <Eigen/Dense>
 
 /*
@@ -25,8 +27,6 @@ class ChickenHeadPlan : public PlanBase {
  public:
   ChickenHeadPlan(const drake::math::RigidTransformd &X_WL7_0,
                   double duration,
-                  double control_time_step,
-                  const Eigen::Ref<const Eigen::VectorXd> &nominal_joint_angles,
                   const drake::multibody::MultibodyPlant<double> *plant);
   ~ChickenHeadPlan() override;
 
@@ -41,10 +41,14 @@ class ChickenHeadPlan : public PlanBase {
       Eigen::Vector3d(0, 0, 0.255));
   const drake::math::RigidTransformd X_WCd_;
   const drake::multibody::Frame<double>& frame_L7_;
+
+  // DiffIk
+  const Eigen::Array3d kp_translation_{100, 100, 100};
+  const Eigen::Array3d kp_rotation_{50, 50, 50};
+  mutable Eigen::MatrixXd Jv_WTq_W_{6, 7};
   std::unique_ptr<drake::systems::Context<double>> plant_context_;
-  std::unique_ptr<
-  drake::manipulation::planner::DifferentialInverseKinematicsParameters>
-  params_;
+  std::unique_ptr<drake::solvers::GurobiSolver> solver_;
+  std::unique_ptr<drake::solvers::MathematicalProgramResult> result_;
 
   // Relative pose estimator subscription.
   void PoseIo() const;

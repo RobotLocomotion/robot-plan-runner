@@ -128,10 +128,7 @@ std::unique_ptr<PlanBase> IiwaPlanFactory::MakeTaskSpaceTrajectoryPlan(
   const double duration = msg_plan.plan.at(1).utime / 1e6;
   const auto nominal_joint_vector =
       config_["robot_nominal_joint"].as<vector<double>>();
-  auto nominal_joint = Eigen::Map<const Eigen::VectorXd>(
-      nominal_joint_vector.data(), nominal_joint_vector.size());
   return std::make_unique<ChickenHeadPlan>(
       TransformFromRobotStateMsg(msg_plan.plan[0].joint_position), duration,
-      config_["control_period"].as<double>(), nominal_joint,
       plant_.get());
 }

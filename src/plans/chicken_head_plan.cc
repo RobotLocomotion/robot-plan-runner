@@ -1,26 +1,24 @@
 #include "plans/chicken_head_plan.h"
 #include "drake/lcm/lcm_messages.h"
 
-using drake::Vector6;
-using drake::math::RigidTransformd;
 using drake::lcmt_robot_state;
-using drake::manipulation::planner::internal::DoDifferentialInverseKinematics;
+using drake::Vector6;
 using drake::manipulation::planner::DifferentialInverseKinematicsStatus;
+using drake::manipulation::planner::internal::DoDifferentialInverseKinematics;
+using drake::math::RigidTransformd;
+using drake::math::RotationMatrixd;
+using Eigen::Vector3d;
+using Eigen::VectorXd;
 
 ChickenHeadPlan::ChickenHeadPlan(
     const drake::math::RigidTransformd &X_WL7_0, double duration,
-    double control_time_step,
-    const Eigen::Ref<const Eigen::VectorXd> &nominal_joint_angles,
     const drake::multibody::MultibodyPlant<double> *plant)
     : PlanBase(plant), duration_(duration), X_WCd_(X_WL7_0 * X_L7T_),
       frame_L7_(plant->GetFrameByName("iiwa_link_7")) {
   // DiffIk.
-  params_ = std::make_unique<
-      drake::manipulation::planner::DifferentialInverseKinematicsParameters>(
-      plant_->num_positions(), plant_->num_velocities());
-  params_->set_timestep(control_time_step);
-  params_->set_nominal_joint_position(nominal_joint_angles);
   plant_context_ = plant_->CreateDefaultContext();
+  solver_ = std::make_unique<drake::solvers::GurobiSolver>();
+  result_ = std::make_unique<drake::solvers::MathematicalProgramResult>();
 
   // X_TC subscription.
   owned_lcm_ = std::make_unique<drake::lcm::DrakeLcm>();
@@ -34,21 +32,18 @@ ChickenHeadPlan::~ChickenHeadPlan() {
   sub_thread_.join();
 }
 
-lcmt_robot_state GetStateMsgFromTransform(
-    const RigidTransformd& X_WC, int64_t utime) {
+lcmt_robot_state GetStateMsgFromTransform(const RigidTransformd &X_WC,
+                                          int64_t utime) {
   const auto Q_WC = X_WC.rotation().ToQuaternion();
-  const auto& p_WC = X_WC.translation();
+  const auto &p_WC = X_WC.translation();
   lcmt_robot_state msg_X_WC{};
   msg_X_WC.utime = utime;
   msg_X_WC.num_joints = 7;
   msg_X_WC.joint_name = {"qw", "qx", "qy", "qz", "x", "y", "z"};
   msg_X_WC.joint_position = std::vector<float>(
-      {static_cast<float>(Q_WC.w()),
-       static_cast<float>(Q_WC.x()),
-       static_cast<float>(Q_WC.y()),
-       static_cast<float>(Q_WC.z()),
-       static_cast<float>(p_WC[0]),
-       static_cast<float>(p_WC[1]),
+      {static_cast<float>(Q_WC.w()), static_cast<float>(Q_WC.x()),
+       static_cast<float>(Q_WC.y()), static_cast<float>(Q_WC.z()),
+       static_cast<float>(p_WC[0]), static_cast<float>(p_WC[1]),
        static_cast<float>(p_WC[2])});
   return msg_X_WC;
 }
@@ -56,9 +51,9 @@ lcmt_robot_state GetStateMsgFromTransform(
 void ChickenHeadPlan::PoseIo() const {
   while (true) {
     rpe_sub_->clear();
-    drake::lcm::LcmHandleSubscriptionsUntil(
-        owned_lcm_.get(),
-        [&]() { return stop_flag_ or rpe_sub_->count() > 0; });
+    drake::lcm::LcmHandleSubscriptionsUntil(owned_lcm_.get(), [&]() {
+      return stop_flag_ or rpe_sub_->count() > 0;
+    });
     if (stop_flag_) {
       break;
     }
@@ -77,8 +72,8 @@ void ChickenHeadPlan::PoseIo() const {
     }
 
     // Publish X_WC.
-    drake::lcm::Publish(
-        owned_lcm_.get(), "X_WC", GetStateMsgFromTransform(X_WC, X_TC_msg.utime));
+    drake::lcm::Publish(owned_lcm_.get(), "X_WC",
+                        GetStateMsgFromTransform(X_WC, X_TC_msg.utime));
   }
 }
 
@@ -100,28 +95,37 @@ void ChickenHeadPlan::Step(const State &state, double control_period, double t,
     X_WT_ = X_WT;
   }
 
-  // DiffIk.
-  const Vector6<double> V_WT_desired =
-      drake::manipulation::planner::ComputePoseDiffInCommonFrame(
-          X_WT.GetAsIsometry3(), X_WTd.GetAsIsometry3()) /
-      params_->get_timestep();
+  const auto &R_WT = X_WT.rotation();
+  const Vector3d e_xyz = X_WTd.translation() - X_WT.translation();
+  const RotationMatrixd R_TTd = R_WT.inverse() * X_WTd.rotation();
+  Vector6<double> V_WT_desired;
+  V_WT_desired.head(3) =
+      R_WT * (kp_rotation_ * R_TTd.ToQuaternion().vec().array()).matrix();
+  V_WT_desired.tail(3) = kp_translation_ * e_xyz.array();
 
-  Eigen::MatrixXd J_WT(6, plant_->num_velocities());
   plant_->CalcJacobianSpatialVelocity(
       *plant_context_, drake::multibody::JacobianWrtVariable::kV, frame_L7_,
-      X_L7T_.translation(), frame_W, frame_W, &J_WT);
+      X_L7T_.translation(), frame_W, frame_W, &Jv_WTq_W_);
 
-  const auto result = DoDifferentialInverseKinematics(
-      state.q, state.v, X_WT, J_WT,
-      drake::multibody::SpatialVelocity<double>(V_WT_desired), *params_);
+  const int nq = plant_->num_velocities();
+  auto prog = drake::solvers::MathematicalProgram();
+  auto dq = prog.NewContinuousVariables(nq, "dq");
+
+  const Eigen::MatrixXd &A = Jv_WTq_W_;
+  const Eigen::VectorXd b = V_WT_desired * control_period;
+  // minimize ||A * dq - b||^2 + 0.01 * ||dq||^2
+
+  prog.AddQuadraticCost(
+      (A.transpose() * A + 0.01 * Eigen::MatrixXd::Identity(nq, nq)),
+      -A.transpose() * b, dq);
+
+  solver_->Solve(prog, {}, {}, result_.get());
 
   // 3. Check for errors and integrate.
-  if (result.status != DifferentialInverseKinematicsStatus::kSolutionFound) {
-    throw DiffIkException();
+  if (result_->is_success()) {
+    cmd->q_cmd = state.q + result_->GetSolution(dq);
+    cmd->tau_cmd = Eigen::VectorXd::Zero(nq);
   } else {
-    cmd->q_cmd = state.q + control_period * result.joint_velocities.value();
-    cmd->tau_cmd = Eigen::VectorXd::Zero(7);
+    throw DiffIkException();
   }
-
-  // Publish X_WC.
 }
