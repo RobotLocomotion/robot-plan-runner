@@ -3,7 +3,6 @@
 #include "plans/plan_base.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_robot_state.hpp"
-#include "drake/manipulation/planner/differential_inverse_kinematics.h"
 #include "drake/solvers/gurobi_solver.h"
 #include "drake/solvers/mathematical_program.h"
 #include <Eigen/Dense>
