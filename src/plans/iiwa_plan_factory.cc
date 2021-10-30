@@ -4,7 +4,7 @@
 #include "drake/common/trajectories/piecewise_quaternion.h"
 #include "drake/multibody/parsing/parser.h"
 
-#include "chicken_head_plan.h"
+#include "squeegee_plan.h"
 #include "joint_space_trajectory_plan.h"
 #include "task_space_trajectory_plan.h"
 
@@ -43,8 +43,8 @@ IiwaPlanFactory::MakePlan(const drake::lcmt_robot_plan &msg_plan) const {
     return MakeJointSpaceTrajectoryPlan(msg_plan);
   } else if (first_joint_name == "qw") {
     return MakeTaskSpaceTrajectoryPlan(msg_plan);
-  } else if (first_joint_name == "qw_chicken") {
-    return MakeChickenHeadPlan(msg_plan);
+  } else if (first_joint_name == "qw_squeegee") {
+    return MakeSqueegeePlan(msg_plan);
   }
   throw std::runtime_error("error in plan lcm message.");
 }
@@ -122,6 +122,7 @@ std::unique_ptr<PlanBase> IiwaPlanFactory::MakeTaskSpaceTrajectoryPlan(
       config_["control_period"].as<double>(), nominal_joint);
 }
 
+/*
 [[nodiscard]] std::unique_ptr<PlanBase> IiwaPlanFactory::MakeChickenHeadPlan(
     const drake::lcmt_robot_plan &msg_plan) const {
   DRAKE_THROW_UNLESS(msg_plan.plan.size() == 2);
@@ -131,4 +132,57 @@ std::unique_ptr<PlanBase> IiwaPlanFactory::MakeTaskSpaceTrajectoryPlan(
   return std::make_unique<ChickenHeadPlan>(
       TransformFromRobotStateMsg(msg_plan.plan[0].joint_position), duration,
       plant_.get());
+}
+*/
+
+std::unique_ptr<PlanBase> IiwaPlanFactory::MakeSqueegeePlan(
+    const drake::lcmt_robot_plan &msg_plan) const {
+  int n_knots = msg_plan.num_states - 1;
+
+  // X_ET.
+  const auto &q_xyz_ET = msg_plan.plan[n_knots].joint_position;
+  const auto X_ET = TransformFromRobotStateMsg(q_xyz_ET);
+
+  // trajectory.
+  vector<double> t_knots(n_knots);
+  vector<Quaterniond> quat_knots(n_knots);
+  vector<MatrixXd> xyz_knots(n_knots, MatrixXd(3, 1));
+
+  for (int t = 0; t < n_knots; t++) {
+    // Store time
+    t_knots[t] = msg_plan.plan.at(t).utime / 1e6;
+    // Store quaternions
+    const auto &q_xyz = msg_plan.plan.at(t).joint_position;
+    quat_knots[t] = Quaterniond(q_xyz[0], q_xyz[1], q_xyz[2], q_xyz[3]);
+
+    // Store xyz positions.
+    // TODO(terry-suh): Change this to a better implementation once Taskspace
+    // gets their own LCM messages.
+    for (int i = 0; i < 3; i++) {
+      xyz_knots[t](i) = q_xyz[4 + i];
+    }
+  }
+
+  auto quat_traj = PiecewiseQuaternionSlerp<double>(t_knots, quat_knots);
+
+  // Use first order hold instead of trajectories. We want to avoid smoothing
+  // non-smooth trajectories if the user commands so.
+  // TODO(terry-suh): Should this be an option in the config?
+  auto xyz_traj =
+      PiecewisePolynomial<double>::FirstOrderHold(t_knots, xyz_knots);
+
+  // Get EE frame.
+  const auto &frame_E =
+      plant_->GetFrameByName(config_["robot_ee_body_name"].as<std::string>());
+
+  // TODO(pang): it feels like the nominal joint angles should be part of the
+  //  plan definition, not in the config file.
+  const auto nominal_joint_vector =
+      config_["robot_nominal_joint"].as<vector<double>>();
+  auto nominal_joint = Eigen::Map<const Eigen::VectorXd>(
+      nominal_joint_vector.data(), nominal_joint_vector.size());
+
+  return std::make_unique<SqueegeePlan>(
+      std::move(quat_traj), std::move(xyz_traj), plant_.get(),
+      config_["control_period"].as<double>(), nominal_joint);
 }
