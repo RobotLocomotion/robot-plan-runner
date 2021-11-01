@@ -29,6 +29,8 @@ private:
   MakeSqueegeePlan(const drake::lcmt_robot_plan &msg_plan) const;  
   [[nodiscard]] std::unique_ptr<PlanBase>
   MakeScrewdriverPlan(const drake::lcmt_robot_plan &msg_plan) const;    
+  [[nodiscard]] std::unique_ptr<PlanBase>
+  MakePenPlan(const drake::lcmt_robot_plan &msg_plan) const;    
 };
 
 template <class T>
