@@ -1,6 +1,8 @@
 #include "state_idle.h"
 #include "state_running.h"
 
+#include <iostream>
+
 using std::cout;
 using std::endl;
 
