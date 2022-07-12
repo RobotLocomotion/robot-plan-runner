@@ -16,5 +16,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: build and test action step
-        uses: ./ # Uses an action in the root directory
+        uses: ./.github/actions/bionic
+        id: build_test
+  focal:
+    runs-on: ubuntu-latest
+    steps:
+      # To use this repository's private action,
+      # you must check out the repository
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: build and test action step
+        uses: ./.github/actions/focal
         id: build_test
