@@ -4,5 +4,5 @@ description: 'runs tests.'
 
 runs:
   using: 'docker'
-  image: 'bionic.dockerfile'
+  image: '../../../bionic.dockerfile'
   entrypoint: './scripts/build_test.sh'
