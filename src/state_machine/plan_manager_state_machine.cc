@@ -3,6 +3,8 @@
 #include "state_machine/state_idle.h"
 #include "state_machine/state_init.h"
 
+#include <iostream>
+
 using std::cout;
 using std::endl;
 using std::string;

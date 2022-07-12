@@ -1,5 +1,7 @@
 #include "state_machine/state_error.h"
 
+#include <iostream>
+
 using std::cout;
 using std::endl;
 

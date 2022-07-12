@@ -1,6 +1,8 @@
 #include "state_running.h"
 #include "state_error.h"
 #include "state_idle.h"
+
+#include <iostream>
 #include <spdlog/spdlog.h>
 
 using std::cout;

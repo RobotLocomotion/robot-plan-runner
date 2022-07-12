@@ -1,4 +1,7 @@
 #include "iiwa_plan_factory.h"
+
+#include <iostream>
+
 #include "drake/common/find_resource.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_quaternion.h"
