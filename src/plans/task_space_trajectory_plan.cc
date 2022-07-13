@@ -26,9 +26,8 @@ void TaskSpaceTrajectoryPlan::Step(const State &state, double control_period,
   const auto X_WT = X_WE * X_ET_;
 
   const Vector6<double> V_WT_desired =
-      ComputePoseDiffInCommonFrame(
-          X_WT.GetAsIsometry3(), X_WT_desired.GetAsIsometry3()) /
-          params_->get_timestep();
+      ComputePoseDiffInCommonFrame(X_WT, X_WT_desired) /
+      params_->get_timestep();
 
   MatrixX<double> J_WT(6, plant_->num_velocities());
   plant_->CalcJacobianSpatialVelocity(*plant_context_,
