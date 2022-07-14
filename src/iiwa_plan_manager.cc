@@ -1,3 +1,4 @@
+#include <iostream>
 #include <vector>
 
 #include "drake_lcmtypes/drake/lcmt_iiwa_command.hpp"

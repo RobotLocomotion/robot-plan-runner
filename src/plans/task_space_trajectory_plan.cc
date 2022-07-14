@@ -1,12 +1,14 @@
 #include "task_space_trajectory_plan.h"
 
+#include <iostream>
+
+using drake::MatrixX;
+using drake::Vector3;
+using drake::Vector6;
+using drake::manipulation::planner::ComputePoseDiffInCommonFrame;
 using drake::manipulation::planner::DifferentialInverseKinematicsResult;
 using drake::manipulation::planner::DifferentialInverseKinematicsStatus;
 using drake::manipulation::planner::internal::DoDifferentialInverseKinematics;
-using drake::manipulation::planner::ComputePoseDiffInCommonFrame;
-using drake::Vector3;
-using drake::Vector6;
-using drake::MatrixX;
 
 using std::cout;
 using std::endl;
@@ -19,10 +21,10 @@ void TaskSpaceTrajectoryPlan::Step(const State &state, double control_period,
 
   // 2. Ask diffik to solve for desired position.
   const drake::math::RigidTransformd X_WT_desired(quat_traj_.orientation(t),
-                                            xyz_traj_.value(t));
-  const auto& frame_W = plant_->world_frame();
-  const auto X_WE = plant_->CalcRelativeTransform(
-      *plant_context_, frame_W, frame_E_);
+                                                  xyz_traj_.value(t));
+  const auto &frame_W = plant_->world_frame();
+  const auto X_WE =
+      plant_->CalcRelativeTransform(*plant_context_, frame_W, frame_E_);
   const auto X_WT = X_WE * X_ET_;
 
   const Vector6<double> V_WT_desired =
@@ -30,11 +32,9 @@ void TaskSpaceTrajectoryPlan::Step(const State &state, double control_period,
       params_->get_timestep();
 
   MatrixX<double> J_WT(6, plant_->num_velocities());
-  plant_->CalcJacobianSpatialVelocity(*plant_context_,
-                                    drake::multibody::JacobianWrtVariable::kV,
-                                    frame_E_, X_ET_.translation(),
-                                    frame_W, frame_W, &J_WT);
-
+  plant_->CalcJacobianSpatialVelocity(
+      *plant_context_, drake::multibody::JacobianWrtVariable::kV, frame_E_,
+      X_ET_.translation(), frame_W, frame_W, &J_WT);
 
   DifferentialInverseKinematicsResult result = DoDifferentialInverseKinematics(
       state.q, state.v, X_WT, J_WT,

@@ -8,7 +8,7 @@ fi
 
 # install libzmq
 apt-get update
-apt-get install libzmq3-dev
+apt-get install -y libzmq3-dev
 
 # install cppzmq
 curl -o cppzmq.tar.gz -L https://github.com/zeromq/cppzmq/archive/refs/tags/v4.7.1.tar.gz
