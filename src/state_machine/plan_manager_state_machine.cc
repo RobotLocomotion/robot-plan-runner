@@ -1,7 +1,5 @@
 #include "state_machine/plan_manager_state_machine.h"
-#include "state_machine/state_error.h"
-#include "state_machine/state_idle.h"
-#include "state_machine/state_init.h"
+#include "state_machine/states.h"
 
 #include <iostream>
 
