@@ -15,12 +15,9 @@ PlanManagerStateBase *StateInit::Instance() {
   return instance_;
 }
 
-void StateInit::ReceiveNewStatusMsg(
-    PlanManagerStateMachine *state_machine,
-    const drake::lcmt_iiwa_status &msg_iiwa_status) const {
-  state_machine->SetIiwaPositionCommandIdle(Eigen::Map<const Eigen::VectorXd>(
-      msg_iiwa_status.joint_position_commanded.data(),
-      msg_iiwa_status.num_joints));
+void StateInit::ReceiveNewStatusMsg(PlanManagerStateMachine *state_machine,
+                                    const State &state) const {
+  state_machine->SetPositionCommandIdle(state.q);
   ChangeState(state_machine, StateIdle::Instance());
 }
 
@@ -42,7 +39,7 @@ bool StateInit::CommandHasError(const State &state, const Command &cmd,
 void StateInit::PrintCurrentState(const PlanManagerStateMachine *state_machine,
                                   double t_now_seconds) const {
   std::string msg;
-  msg += ("[INIT]: waiting for IIWA_STATUS. ");
+  msg += ("[INIT]: waiting for status message. ");
   msg += "Number of plans: ";
   msg += std::to_string(state_machine->num_plans());
   msg += ". t = ";
@@ -88,9 +85,9 @@ PlanManagerStateBase *StateRunning::Instance() {
   return instance_;
 }
 
-const PlanBase *StateRunning::GetCurrentPlan(
-    PlanManagerStateMachine *state_machine, double t_now,
-    const drake::lcmt_iiwa_status &msg_iiwa_status) const {
+const PlanBase *
+StateRunning::GetCurrentPlan(PlanManagerStateMachine *state_machine,
+                             double t_now, const State &state) const {
   auto &plans = state_machine->get_mutable_plans_queue();
   DRAKE_THROW_UNLESS(!plans.empty());
   const double *t_start = state_machine->get_current_plan_start_time();

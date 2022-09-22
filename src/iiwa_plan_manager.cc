@@ -216,7 +216,7 @@ void IiwaPlanManager::HandleIiwaStatus(
      *       - set state_machine.current_plan_start_time_seconds_ to nullptr.
      *       - change state to IDLE.
      */
-    plan = state_machine_->GetCurrentPlan(t_now, *status_msg);
+    plan = state_machine_->GetCurrentPlan(t_now, s);
 
     /*
      * ReceiveNewStatusMsg.
@@ -231,7 +231,7 @@ void IiwaPlanManager::HandleIiwaStatus(
      * Error:
      *   - do nothing.
      */
-    state_machine_->ReceiveNewStatusMsg(*status_msg);
+    state_machine_->ReceiveNewStatusMsg(s);
 
     // Compute command.
     if (plan) {
@@ -239,7 +239,7 @@ void IiwaPlanManager::HandleIiwaStatus(
       plan->Step(s, control_period_seconds_, t_plan, &c);
     } else if (state_machine_->get_state_type() ==
                PlanManagerStateTypes::kStateIdle) {
-      c.q_cmd = state_machine_->get_iiwa_position_command_idle();
+      c.q_cmd = state_machine_->get_position_command_idle();
       c.tau_cmd = Eigen::VectorXd::Zero(num_joints);
     } else {
       // No commands are sent in state INIT or ERROR.
@@ -261,7 +261,7 @@ void IiwaPlanManager::HandleIiwaStatus(
     }
     lcm_status_command_->publish(
         config_["lcm_command_channel"].as<std::string>(), &cmd_msg);
-    state_machine_->SetIiwaPositionCommandIdle(c.q_cmd);
+    state_machine_->SetPositionCommandIdle(c.q_cmd);
   }
 }
 

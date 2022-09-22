@@ -15,19 +15,19 @@ PlanManagerStateMachine::PlanManagerStateMachine(
   state_ = StateInit::Instance();
 }
 
-void PlanManagerStateMachine::SetIiwaPositionCommandIdle(
+void PlanManagerStateMachine::SetPositionCommandIdle(
     const Eigen::Ref<const Eigen::VectorXd> &q_cmd) {
-  if (iiwa_position_command_idle_) {
-    DRAKE_THROW_UNLESS(q_cmd.size() == iiwa_position_command_idle_->size());
-    *iiwa_position_command_idle_ = q_cmd;
+  if (position_command_idle_) {
+    DRAKE_THROW_UNLESS(q_cmd.size() == position_command_idle_->size());
+    *position_command_idle_ = q_cmd;
   } else {
-    iiwa_position_command_idle_ = std::make_unique<Eigen::VectorXd>(q_cmd);
+    position_command_idle_ = std::make_unique<Eigen::VectorXd>(q_cmd);
   }
 }
 
-const PlanBase *PlanManagerStateBase::GetCurrentPlan(
-    PlanManagerStateMachine *state_machine, double t_now,
-    const drake::lcmt_iiwa_status &msg_iiwa_status) const {
+const PlanBase *
+PlanManagerStateBase::GetCurrentPlan(PlanManagerStateMachine *state_machine,
+                                     double t_now, const State &state) const {
   DRAKE_THROW_UNLESS(state_machine->num_plans() == 0);
   return nullptr;
 }

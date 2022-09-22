@@ -64,9 +64,6 @@ void IiwaPlanManagerSystem::CalcIiwaCommand(
   }
 
   const double t_now = context.get_time();
-  auto plan = state_machine_->GetCurrentPlan(t_now, msg_iiwa_status);
-  state_machine_->ReceiveNewStatusMsg(msg_iiwa_status);
-
   State s(
       Eigen::Map<const VectorXd>(msg_iiwa_status.joint_position_measured.data(),
                                  msg_iiwa_status.num_joints),
@@ -77,12 +74,15 @@ void IiwaPlanManagerSystem::CalcIiwaCommand(
                                  msg_iiwa_status.num_joints));
   Command c;
 
+  auto plan = state_machine_->GetCurrentPlan(t_now, s);
+  state_machine_->ReceiveNewStatusMsg(s);
+
   if (plan) {
     const double t_plan = state_machine_->GetCurrentPlanUpTime(t_now);
     plan->Step(s, control_period_seconds_, t_plan, &c);
   } else if (state_machine_->get_state_type() ==
              PlanManagerStateTypes::kStateIdle) {
-    c.q_cmd = state_machine_->get_iiwa_position_command_idle();
+    c.q_cmd = state_machine_->get_position_command_idle();
     c.tau_cmd = Eigen::VectorXd::Zero(msg_iiwa_status.num_joints);
   } else {
     // In state INIT or ERROR.

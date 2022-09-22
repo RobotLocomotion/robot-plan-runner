@@ -6,7 +6,6 @@
 #include <sstream>
 
 #include "drake/multibody/plant/multibody_plant.h"
-#include "drake_lcmtypes/drake/lcmt_iiwa_status.hpp"
 
 #include "plans/plan_base.h"
 
@@ -39,16 +38,15 @@ public:
 
   virtual void AbortAllPlans(PlanManagerStateMachine *state_machine);
 
-  virtual const PlanBase *
-  GetCurrentPlan(PlanManagerStateMachine *state_machine, double t_now_seconds,
-                 const drake::lcmt_iiwa_status &msg_iiwa_status) const;
+  virtual const PlanBase *GetCurrentPlan(PlanManagerStateMachine *state_machine,
+                                         double t_now_seconds,
+                                         const State &state) const;
 
   // Pure virtual functions.
   [[nodiscard]] virtual PlanManagerStateTypes get_state_type() const = 0;
 
-  virtual void
-  ReceiveNewStatusMsg(PlanManagerStateMachine *state_machine,
-                      const drake::lcmt_iiwa_status &msg_iiwa_status) const = 0;
+  virtual void ReceiveNewStatusMsg(PlanManagerStateMachine *state_machine,
+                                   const State &state) const = 0;
   virtual void PrintCurrentState(const PlanManagerStateMachine *state_machine,
                                  double t_now_seconds) const = 0;
 
@@ -74,19 +72,17 @@ public:
                                    const YAML::Node &config);
   // State-dependent methods.
   // TODO: separate the logic that schedules plans into another function.
-  [[nodiscard]] const PlanBase *
-  GetCurrentPlan(const TimePoint &t_now,
-                 const drake::lcmt_iiwa_status &msg_iiwa_status) {
+  [[nodiscard]] const PlanBase *GetCurrentPlan(const TimePoint &t_now,
+                                               const State &state) {
     double t_now_double =
         std::chrono::duration_cast<DoubleSeconds>(t_now.time_since_epoch())
             .count();
-    return GetCurrentPlan(t_now_double, msg_iiwa_status);
+    return GetCurrentPlan(t_now_double, state);
   }
 
-  [[nodiscard]] const PlanBase *
-  GetCurrentPlan(double t_now_seconds,
-                 const drake::lcmt_iiwa_status &msg_iiwa_status) {
-    return state_->GetCurrentPlan(this, t_now_seconds, msg_iiwa_status);
+  [[nodiscard]] const PlanBase *GetCurrentPlan(double t_now_seconds,
+                                               const State &state) {
+    return state_->GetCurrentPlan(this, t_now_seconds, state);
   }
 
   // Returns in seconds how long the current plan has been active.
@@ -125,16 +121,16 @@ public:
   // Empties the plans_ queue and sets the state to IDLE.
   void AbortAllPlans() { state_->AbortAllPlans(this); }
 
-  // Returns true if an IIWA_STATUS message has been received.
+  // Returns true if a status message has been received.
   [[nodiscard]] bool has_received_status_msg() const {
     return state_->has_received_status_msg();
   }
 
-  // Called when a new IIWA_STATUS message is received. If the current state is
+  // Called when a new status message is received. If the current state is
   //  INIT, the state is changed to IDLE. If the current state is IDLE,
   //  RUNNING or ERROR, this function does nothing.
-  void ReceiveNewStatusMsg(const drake::lcmt_iiwa_status &msg_iiwa_status) {
-    state_->ReceiveNewStatusMsg(this, msg_iiwa_status);
+  void ReceiveNewStatusMsg(const State &state) {
+    state_->ReceiveNewStatusMsg(this, state);
   }
 
   [[nodiscard]] PlanManagerStateTypes get_state_type() const {
@@ -153,21 +149,17 @@ public:
     return plans_;
   };
 
-  // Stores lcmt_iiwa_status.joint_position_measured in
-  //  iiwa_position_command_idle_.
-  void
-  SetIiwaPositionCommandIdle(const Eigen::Ref<const Eigen::VectorXd> &q_cmd);
+  // Stores q_cmd in position_command_idle_.
+  void SetPositionCommandIdle(const Eigen::Ref<const Eigen::VectorXd> &q_cmd);
 
-  [[nodiscard]] const Eigen::VectorXd &get_iiwa_position_command_idle() const {
-    return *iiwa_position_command_idle_;
+  [[nodiscard]] const Eigen::VectorXd &get_position_command_idle() const {
+    return *position_command_idle_;
   };
 
-  void reset_iiwa_position_command_idle() {
-    iiwa_position_command_idle_.reset();
-  }
+  void reset_position_command_idle() { position_command_idle_.reset(); }
 
-  [[nodiscard]] bool is_iiwa_position_command_idle_set() const {
-    return iiwa_position_command_idle_ != nullptr;
+  [[nodiscard]] bool is_position_command_idle_set() const {
+    return position_command_idle_ != nullptr;
   }
 
   [[nodiscard]] double get_state_machine_up_time(double t_now_seconds) const {
@@ -207,6 +199,6 @@ private:
 
   const double state_machine_start_time_seconds_;
 
-  // The iiwa command to send in state IDLE.
-  std::unique_ptr<Eigen::VectorXd> iiwa_position_command_idle_{nullptr};
+  // The position command to send in state IDLE.
+  std::unique_ptr<Eigen::VectorXd> position_command_idle_{nullptr};
 };

@@ -7,9 +7,8 @@ public:
 
   [[nodiscard]] bool has_received_status_msg() const override { return false; };
 
-  void ReceiveNewStatusMsg(
-      PlanManagerStateMachine *state_machine,
-      const drake::lcmt_iiwa_status &msg_iiwa_status) const override;
+  void ReceiveNewStatusMsg(PlanManagerStateMachine *state_machine,
+                           const State &state) const override;
 
   void QueueNewPlan(PlanManagerStateMachine *state_machine,
                     std::unique_ptr<PlanBase> plan) override;
@@ -41,9 +40,8 @@ public:
 
   [[nodiscard]] bool has_received_status_msg() const override { return true; };
 
-  void ReceiveNewStatusMsg(
-      PlanManagerStateMachine *state_machine,
-      const drake::lcmt_iiwa_status &msg_iiwa_status) const override{};
+  void ReceiveNewStatusMsg(PlanManagerStateMachine *state_machine,
+                           const State &state) const override{};
 
   void QueueNewPlan(PlanManagerStateMachine *state_machine,
                     std::unique_ptr<PlanBase> plan) override;
@@ -64,18 +62,17 @@ class StateRunning : public PlanManagerStateBase {
 public:
   static PlanManagerStateBase *Instance();
 
-  const PlanBase *
-  GetCurrentPlan(PlanManagerStateMachine *state_machine, double t_now,
-                 const drake::lcmt_iiwa_status &msg_iiwa_status) const override;
+  const PlanBase *GetCurrentPlan(PlanManagerStateMachine *state_machine,
+                                 double t_now,
+                                 const State &state) const override;
 
   double GetCurrentPlanUpTime(const PlanManagerStateMachine *state_machine,
                               double t_now) const override;
 
   [[nodiscard]] bool has_received_status_msg() const override { return true; };
 
-  void ReceiveNewStatusMsg(
-      PlanManagerStateMachine *state_machine,
-      const drake::lcmt_iiwa_status &msg_iiwa_status) const override{};
+  void ReceiveNewStatusMsg(PlanManagerStateMachine *state_machine,
+                           const State &state) const override{};
 
   void QueueNewPlan(PlanManagerStateMachine *state_machine,
                     std::unique_ptr<PlanBase> plan) override;
@@ -110,9 +107,8 @@ public:
     return PlanManagerStateTypes::kStateError;
   };
 
-  void ReceiveNewStatusMsg(
-      PlanManagerStateMachine *state_machine,
-      const drake::lcmt_iiwa_status &msg_iiwa_status) const override{};
+  void ReceiveNewStatusMsg(PlanManagerStateMachine *state_machine,
+                           const State &state) const override{};
 
   void AbortAllPlans(PlanManagerStateMachine *state_machine) override {
     throw std::runtime_error("AbortAllPlans should not be called in state " +
