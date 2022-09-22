@@ -87,3 +87,13 @@ void PlanManagerStateBase::AbortAllPlans(
   spdlog::flush_on(spdlog::level::info);
   spdlog::info("All plans have been aborted.");
 }
+
+void PlanManagerStateBase::ChangeState(PlanManagerStateMachine *state_machine,
+                                       PlanManagerStateBase *new_state) {
+  std::stringstream ss;
+  ss << "[" << state_machine->state_->get_state_name() << "]"
+     << "---->"
+     << "[" << new_state->get_state_name() << "]";
+  spdlog::info(ss.str());
+  state_machine->ChangeState(new_state);
+};
