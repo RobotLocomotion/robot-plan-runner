@@ -3,6 +3,13 @@ add_subdirectory(state_machine)
 add_subdirectory(plan_manager_system)
 
 
+add_library(bimanual_iiwa_plan_manager
+        bimanual_iiwa_plan_manager.h bimanual_iiwa_plan_manager.cc)
+target_link_libraries(bimanual_iiwa_plan_manager
+        plan_manager_state_machine cppzmq bimanual_iiwa_plan_factory Threads::Threads)
+target_include_directories(bimanual_iiwa_plan_manager PUBLIC ${LCM_INCLUDE_PATH})
+add_dependencies(bimanual_iiwa_plan_manager robot-plan-runner-lcmtypes)
+
 add_library(iiwa_plan_manager iiwa_plan_manager.h iiwa_plan_manager.cc)
 target_link_libraries(iiwa_plan_manager
         plan_manager_state_machine cppzmq iiwa_plan_factory Threads::Threads)
@@ -11,6 +18,9 @@ add_dependencies(iiwa_plan_manager robot-plan-runner-lcmtypes)
 
 add_executable(run_zmq_example run_zmq_example.cc)
 target_link_libraries(run_zmq_example cppzmq iiwa_plan_factory yaml-cpp)
+
+add_executable(run_bimanual_plan_manager run_bimanual_plan_manager.cc)
+target_link_libraries(run_bimanual_plan_manager bimanual_iiwa_plan_manager yaml-cpp)
 
 add_executable(run_plan_manager run_plan_manager.cc)
 target_link_libraries(run_plan_manager iiwa_plan_manager yaml-cpp)
