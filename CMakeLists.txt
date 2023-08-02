@@ -72,7 +72,7 @@ if(NOT APPLE)
     )
   endif()
 
-  if(NOT UNIX_DISTRIBUTION_CODENAME MATCHES "^(bionic|focal)$")
+  if(NOT UNIX_DISTRIBUTION_CODENAME MATCHES "^(focal|jammy)$")
     message(FATAL_ERROR
       "Release ${UNIX_DISTRIBUTION_CODENAME} is NOT supported. Please use "
       "Ubuntu 18.04 (Bionic) or 20.04 (Focal)."
@@ -82,13 +82,14 @@ endif()
 
 if(APPLE)
   set(FIND_PYTHON_EXECUTABLE_PATHS /usr/local/bin)
-  set(FIND_PYTHON_INTERP_VERSION 3.9)
-elseif(UNIX_DISTRIBUTION_CODENAME STREQUAL bionic)
-  set(FIND_PYTHON_EXECUTABLE_PATHS /usr/bin)
-  set(FIND_PYTHON_INTERP_VERSION 3.6)
-else()
+  set(FIND_PYTHON_INTERP_VERSION 3.11)
+elseif(UNIX_DISTRIBUTION_CODENAME STREQUAL focal)
   set(FIND_PYTHON_EXECUTABLE_PATHS /usr/bin)
   set(FIND_PYTHON_INTERP_VERSION 3.8)
+else()
+  # Jammy
+  set(FIND_PYTHON_EXECUTABLE_PATHS /usr/bin)
+  set(FIND_PYTHON_INTERP_VERSION 3.10)
 endif()
 find_program(PYTHON_EXECUTABLE NAMES python3
   PATHS "${FIND_PYTHON_EXECUTABLE_PATHS}"

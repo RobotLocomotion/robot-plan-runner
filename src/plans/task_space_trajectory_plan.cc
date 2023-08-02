@@ -5,10 +5,10 @@
 using drake::MatrixX;
 using drake::Vector3;
 using drake::Vector6;
-using drake::manipulation::planner::ComputePoseDiffInCommonFrame;
-using drake::manipulation::planner::DifferentialInverseKinematicsResult;
-using drake::manipulation::planner::DifferentialInverseKinematicsStatus;
-using drake::manipulation::planner::internal::DoDifferentialInverseKinematics;
+using drake::multibody::ComputePoseDiffInCommonFrame;
+using drake::multibody::DifferentialInverseKinematicsResult;
+using drake::multibody::DifferentialInverseKinematicsStatus;
+using drake::multibody::DoDifferentialInverseKinematics;
 
 using std::cout;
 using std::endl;
@@ -29,7 +29,7 @@ void TaskSpaceTrajectoryPlan::Step(const State &state, double control_period,
 
   const Vector6<double> V_WT_desired =
       ComputePoseDiffInCommonFrame(X_WT, X_WT_desired) /
-      params_->get_timestep();
+      params_->get_time_step();
 
   MatrixX<double> J_WT(6, plant_->num_velocities());
   plant_->CalcJacobianSpatialVelocity(
@@ -37,8 +37,7 @@ void TaskSpaceTrajectoryPlan::Step(const State &state, double control_period,
       X_ET_.translation(), frame_W, frame_W, &J_WT);
 
   DifferentialInverseKinematicsResult result = DoDifferentialInverseKinematics(
-      state.q, state.v, X_WT, J_WT,
-      drake::multibody::SpatialVelocity<double>(V_WT_desired), *params_);
+      state.q, state.v, V_WT_desired, J_WT, *params_);
 
   // 3. Check for errors and integrate.
   if (result.status != DifferentialInverseKinematicsStatus::kSolutionFound) {
