@@ -32,6 +32,6 @@ An incomplete design documentation can be found [here](https://slides.com/pang/d
 
 ## Continuous Integration
 - CI is implemented by a custom Github Action that builds a docker image 
-  using `./bionic.dockerfile` and runs the entrypoint script `.
+  using `./jammy.dockerfile` and runs the entrypoint script `.
   /sciprts/buld_test.sh`.
   
