@@ -4,13 +4,13 @@ FROM ubuntu:20.04
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && yes "Y" \
       | apt-get install --no-install-recommends curl apt-transport-https sudo \
-      ca-certificates libgtest-dev libgflags-dev python3-dev\
+      ca-certificates libgtest-dev libgflags-dev python3.8-dev python-is-python3 \
       && rm -rf /var/lib/apt/lists/* \
       && apt-get clean all
 
 # install drake.
-ENV DRAKE_URL=https://drake-packages.csail.mit.edu/drake/nightly/drake-latest-focal.tar.gz
-RUN curl -o drake.tar.gz $DRAKE_URL
+ENV DRAKE_URL=https://github.com/RobotLocomotion/drake/releases/download/v1.19.0/drake-20230713-focal.tar.gz
+RUN curl -L -o drake.tar.gz $DRAKE_URL
 RUN tar -xzf drake.tar.gz -C /opt && rm drake.tar.gz
 RUN apt-get update \
   && yes "Y" | bash /opt/drake/share/drake/setup/install_prereqs \
