@@ -4,7 +4,7 @@
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_quaternion.h"
-#include "drake/manipulation/planner/differential_inverse_kinematics_integrator.h"
+#include "drake/multibody/inverse_kinematics/differential_inverse_kinematics_integrator.h"
 #include "drake/math/rigid_transform.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/multibody/tree/multibody_tree.h"
@@ -26,9 +26,9 @@ public:
         frame_E_(frame_E), nominal_joint_position_(nominal_joint_position) {
 
     params_ = std::make_unique<
-        drake::manipulation::planner::DifferentialInverseKinematicsParameters>(
+        drake::multibody::DifferentialInverseKinematicsParameters>(
         plant_->num_positions(), plant_->num_velocities());
-    params_->set_timestep(control_time_step);
+    params_->set_time_step(control_time_step);
     params_->set_nominal_joint_position(nominal_joint_position);
     plant_context_ = plant_->CreateDefaultContext();
   }
@@ -53,6 +53,6 @@ private:
 
   std::unique_ptr<drake::systems::Context<double>> plant_context_;
   std::unique_ptr<
-      drake::manipulation::planner::DifferentialInverseKinematicsParameters>
+      drake::multibody::DifferentialInverseKinematicsParameters>
       params_;
 };
