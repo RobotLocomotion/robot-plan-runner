@@ -5,6 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && yes "Y" \
       | apt-get install --no-install-recommends curl apt-transport-https sudo \
       ca-certificates libgtest-dev libgflags-dev python3.10-dev python-is-python3 \
+      libyaml-cpp-dev \
       && rm -rf /var/lib/apt/lists/* \
       && apt-get clean all
 
